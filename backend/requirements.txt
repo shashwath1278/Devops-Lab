@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+python-dotenv
+supabase
+google-generativeai
+python-jose[cryptography]
+passlib[argon2]
+argon2-cffi
+groq
+httpx
+pypdf
