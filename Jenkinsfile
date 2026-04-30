@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = 'dockerhub-creds'
-        IMAGE_NAME            = 'shashwath1278/ml-project'
+        IMAGE_NAME            = 'shash1278/ml-project'
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
     }
 
