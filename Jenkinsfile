@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = 'dockerhub-creds'
-        IMAGE_NAME            = 'shashwath1278/ml-project'
+        IMAGE_NAME            = 'shash1278/ml-project'
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
     }
 
@@ -16,19 +16,21 @@ pipeline {
 
         stage('Build Image') {
             steps {
-                script {
-                    docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
-                }
+                bat "docker build -t %IMAGE_NAME%:%IMAGE_TAG% -t %IMAGE_NAME%:latest ."
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKERHUB_CREDENTIALS}") {
-                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push()
-                        docker.image("${IMAGE_NAME}:${IMAGE_TAG}").push('latest')
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKERHUB_CREDENTIALS}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    bat 'echo %DOCKER_PASS%| docker login -u %DOCKER_USER% --password-stdin'
+                    bat "docker push %IMAGE_NAME%:%IMAGE_TAG%"
+                    bat "docker push %IMAGE_NAME%:latest"
+                    bat 'docker logout'
                 }
             }
         }
@@ -36,7 +38,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker image prune -f || true'
+            bat 'docker image prune -f || exit 0'
         }
     }
 }
