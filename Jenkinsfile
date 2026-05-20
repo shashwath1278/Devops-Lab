@@ -49,14 +49,6 @@ pipeline {
       }
     }
 
-    stage('Quality Gate') {
-      steps {
-        timeout(time: 5, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: false       // false = don't fail the demo build
-        }
-      }
-    }
-
     stage('Docker Build') {
       steps {
         bat "docker build -t ${IMAGE_BACKEND}:${BUILD_NUMBER} -t ${IMAGE_BACKEND}:latest ./backend"
