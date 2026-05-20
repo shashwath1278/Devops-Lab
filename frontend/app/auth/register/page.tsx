@@ -61,7 +61,7 @@ export default function RegisterPage() {
             }
 
             // Login immediately after registration or redirect to login
-            router.push("/api/auth/signin")
+            router.push("/auth/signin")
         } catch (err: any) {
             setError(err.message)
         } finally {
@@ -116,6 +116,7 @@ export default function RegisterPage() {
                                     name="email"
                                     type="email"
                                     placeholder="john@example.com"
+                                    required
                                     value={formData.email}
                                     onChange={handleChange}
                                     className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
@@ -164,7 +165,7 @@ export default function RegisterPage() {
                             <div className="text-sm text-center text-gray-500 dark:text-gray-400">
                                 Already have an account?{" "}
                                 <Link
-                                    href="/api/auth/signin"
+                                    href="/auth/signin"
                                     className="font-semibold text-primary hover:underline transition-colors"
                                 >
                                     Sign in

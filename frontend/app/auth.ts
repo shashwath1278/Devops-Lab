@@ -2,6 +2,17 @@ import NextAuth from "next-auth"
 import type { NextAuthOptions } from "next-auth"
 import { getServerSession } from "next-auth/next"
 
+function resolveLoginUrl(): string {
+  if (process.env.NEXTAUTH_BACKEND_URL) {
+    return process.env.NEXTAUTH_BACKEND_URL
+  }
+  const backend = process.env.BACKEND_URL
+  if (backend) {
+    return `${backend.replace(/\/$/, "")}/api/auth/login`
+  }
+  return "/api/auth/login"
+}
+
 const authOptions: NextAuthOptions = {
   providers: [
     {
@@ -18,7 +29,7 @@ const authOptions: NextAuthOptions = {
         }
 
         try {
-          const backendUrl = process.env.NEXTAUTH_BACKEND_URL || "/api/mock-auth"
+          const backendUrl = resolveLoginUrl()
           const res = await fetch(backendUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -29,15 +40,14 @@ const authOptions: NextAuthOptions = {
           })
 
           if (!res.ok) {
-            console.error("[v0] Auth failed:", res.status, res.statusText)
+            console.error("[auth] Login failed:", res.status, res.statusText)
             return null
           }
 
-          let data
-          try {
-            data = await res.json()
-          } catch (parseError) {
-            console.error("[v0] Failed to parse response as JSON:", parseError)
+          const data = await res.json()
+          const accessToken = data.access_token || data.token
+          if (!accessToken) {
+            console.error("[auth] No access_token in login response")
             return null
           }
 
@@ -45,10 +55,10 @@ const authOptions: NextAuthOptions = {
             id: data.user_id || data.id,
             name: data.username,
             email: data.email,
-            token: data.token,
+            token: accessToken,
           }
         } catch (error) {
-          console.error("[v0] Auth error:", error)
+          console.error("[auth] Login error:", error)
           return null
         }
       },
@@ -77,7 +87,7 @@ const authOptions: NextAuthOptions = {
       return session
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "dev-secret-key",
+  secret: process.env.NEXTAUTH_SECRET,
 }
 
 export default NextAuth(authOptions)

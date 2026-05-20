@@ -1,11 +1,15 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Student Platform API")
 
-# Configure CORS
+_default_origins = "http://localhost:3000"
 origins = [
-    "http://localhost:3000",  # Next.js frontend
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", _default_origins).split(",")
+    if o.strip()
 ]
 
 app.add_middleware(

@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Optional
 from uuid import UUID
 from app.core.supabase import supabase
+from app.core.security import get_current_user_id
 from app.models.document import Document, DocumentCreate
 import shutil
 import os
@@ -15,7 +16,7 @@ async def upload_document(
     description: Optional[str] = Form(None),
     subject: Optional[str] = Form(None),
     tags: Optional[str] = Form(None), # Comma separated tags
-    user_id: str = Form(...) # In a real app, extract from JWT
+    user_id: str = Depends(get_current_user_id),
 ):
     try:
         # 1. Upload file to Supabase Storage
@@ -74,7 +75,10 @@ async def get_documents(
     return data[1]
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str, user_id: str): # user_id should come from auth
+async def delete_document(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id),
+):
     # 1. Get document to find file path
     data, count = supabase.table("documents").select("*").eq("id", document_id).execute()
     if not data[1]:
@@ -82,9 +86,8 @@ async def delete_document(document_id: str, user_id: str): # user_id should come
     
     document = data[1][0]
     
-    # Verify ownership (simplified)
-    # if document["uploaded_by"] != user_id:
-    #     raise HTTPException(status_code=403, detail="Not authorized")
+    if str(document.get("uploaded_by")) != str(user_id):
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     # 2. Delete from Storage
     supabase.storage.from_("textbooks").remove([document["file_path"]])

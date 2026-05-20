@@ -32,7 +32,7 @@ export default function DashboardPage() {
         >
           {/* Left Column: Upload Widget */}
           <div className="lg:col-span-1 space-y-6">
-            <UploadComponent userId={session.user?.id || ""} />
+            <UploadComponent token={(session as { token?: string }).token} />
           </div>
 
           {/* Right Column: Document Library */}

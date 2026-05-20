@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { apiFetch } from "@/lib/api"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,7 @@ interface Document {
 
 export default function DocumentList() {
   const { data: session } = useSession()
+  const token = (session as { token?: string } | null)?.token
   const [documents, setDocuments] = useState<Document[]>([])
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([])
   const [search, setSearch] = useState("")
@@ -46,9 +48,10 @@ export default function DocumentList() {
   const handleGenerateQuiz = async (docId: string) => {
     setGeneratingQuizId(docId)
     try {
-      const response = await fetch("/api/quiz/generate", {
+      const response = await apiFetch("/api/quiz/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        token,
         body: JSON.stringify({ document_id: docId }),
       })
 
@@ -94,9 +97,10 @@ export default function DocumentList() {
   const handleGenerateFlashcards = async (docId: string) => {
     setGeneratingId(docId)
     try {
-      const response = await fetch("/api/flashcards/generate", {
+      const response = await apiFetch("/api/flashcards/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        token,
         body: JSON.stringify({ document_id: docId }),
       })
 
@@ -179,8 +183,9 @@ export default function DocumentList() {
 
     setDeleting(docId)
     try {
-      const response = await fetch(`/api/documents/${docId}?user_id=${(session?.user as any)?.id}`, {
+      const response = await apiFetch(`/api/documents/${docId}`, {
         method: "DELETE",
+        token,
       })
 
       if (!response.ok) throw new Error("Failed to delete document")

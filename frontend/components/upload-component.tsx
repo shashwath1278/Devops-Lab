@@ -10,12 +10,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Cloud, Upload, Loader2, Check, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { apiFetch } from "@/lib/api"
 
 interface UploadComponentProps {
-  userId: string
+  token?: string | null
 }
 
-export default function UploadComponent({ userId }: UploadComponentProps) {
+export default function UploadComponent({ token }: UploadComponentProps) {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -88,11 +89,10 @@ export default function UploadComponent({ userId }: UploadComponentProps) {
       formData.append("description", description)
       formData.append("subject", subject)
       formData.append("tags", tags)
-      formData.append("user_id", userId)
-
-      const response = await fetch("/api/documents/upload", {
+      const response = await apiFetch("/api/documents/upload", {
         method: "POST",
         body: formData,
+        token,
       })
 
       if (!response.ok) {

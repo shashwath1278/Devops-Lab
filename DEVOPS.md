@@ -97,7 +97,12 @@ In Jenkins:
 
 ### 4. Vercel (frontend)
 - Import the GitHub repo; set **Root Directory = `frontend`**.
-- Env vars: `BACKEND_URL` (live backend URL), `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
+- Env vars (then **redeploy** so rewrites pick up `BACKEND_URL`):
+  - `BACKEND_URL` — e.g. `http://studenthub-api-sh1278.centralindia.azurecontainer.io:8000`
+  - `NEXTAUTH_URL` — your Vercel app URL, e.g. `https://your-app.vercel.app`
+  - `NEXTAUTH_SECRET` — long random string (not the backend `SECRET_KEY`)
+  - Optional: `NEXTAUTH_BACKEND_URL` — same as `{BACKEND_URL}/api/auth/login` if login fails
+- On Azure backend, set `CORS_ORIGINS` to include your Vercel URL if the browser calls the API directly.
 
 ### 5. Azure Container Instances (live backend)
 ```bash
@@ -106,8 +111,11 @@ az container create -g studenthub-rg -n studenthub-backend \
   --image shash1278/studenthub-backend:latest \
   --dns-name-label studenthub-api --ports 8000 \
   --secure-environment-variables SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-       GROQ_API_KEY=... SECRET_KEY=...
+       GROQ_API_KEY=... SECRET_KEY=... \
+  --environment-variables CORS_ORIGINS=https://your-app.vercel.app,http://localhost:3000
 ```
+
+Use the **same** `SECRET_KEY` value in Azure and in local `backend/.env` so issued JWTs stay valid. After code changes, rebuild and push the Docker image, then recreate the container.
 
 ## Demo runbook ("explain the pipeline")
 
@@ -119,6 +127,10 @@ az container create -g studenthub-rg -n studenthub-backend \
 - **One-line summary:** "A push to GitHub `main` triggers both Jenkins (build → dependency &
   security scan → push image to Docker Hub) and Azure DevOps (build/test on our self-hosted
   agent); Vercel hosts the frontend and Azure Container Instances runs the backend."
+
+## Supabase (new project)
+
+If the old Supabase project was paused, create a new project and follow **`SUPABASE-SETUP.md`** (SQL, `textbooks` bucket, new API keys in Azure + `backend/.env`).
 
 ## Known limitations (do not demo)
 

@@ -21,6 +21,9 @@ services:
       - "3000:3000"
     environment:
       NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev-nextauth-secret
+      BACKEND_URL: http://backend:8000
+      NEXTAUTH_BACKEND_URL: http://backend:8000/api/auth/login
     depends_on:
       backend:
         condition: service_healthy

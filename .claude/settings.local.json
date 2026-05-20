@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(docker compose *)",
-      "Bash(git ls-tree *)"
+      "Bash(git ls-tree *)",
+      "PowerShell(Get-PSDrive C | Select-Object Used,Free,@{N='Used\\(GB\\)';E={[math]::Round\\($_.Used/1GB,1\\)}},@{N='Free\\(GB\\)';E={[math]::Round\\($_.Free/1GB,1\\)}} | Format-List)",
+      "PowerShell(Get-ChildItem C:\\\\Users\\\\drspr -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object { $s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Folder=$_.Name; GB=[math]::Round\\($s/1GB,2\\)} } | Sort-Object GB -Descending | Select-Object -First 15 | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem C:\\\\ProgramData -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object { $s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Folder=$_.Name; GB=[math]::Round\\($s/1GB,2\\)} } | Sort-Object GB -Descending | Select-Object -First 12 | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem C:\\\\Users\\\\drspr\\\\AppData\\\\Local -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object { $s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Folder=$_.Name; GB=[math]::Round\\($s/1GB,2\\)} } | Sort-Object GB -Descending | Select-Object -First 15 | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem C:\\\\ProgramData\\\\McAfee -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object { $s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Folder=$_.Name; GB=[math]::Round\\($s/1GB,2\\)} } | Sort-Object GB -Descending | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem 'C:\\\\ProgramData\\\\McAfee\\\\wps' -Force -ErrorAction SilentlyContinue | ForEach-Object { if\\($_.PSIsContainer\\){$s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue|Measure-Object -Property Length -Sum\\).Sum}else{$s=$_.Length}; [PSCustomObject]@{Name=$_.Name; Type=if\\($_.PSIsContainer\\){'DIR'}else{'FILE'}; GB=[math]::Round\\($s/1GB,3\\)} } | Sort-Object GB -Descending | Select-Object -First 15 | Format-Table -AutoSize)",
+      "PowerShell('C:\\\\Windows\\\\Temp',\"$env:TEMP\",'C:\\\\Windows\\\\SoftwareDistribution\\\\Download' | ForEach-Object { if\\(Test-Path $_\\){ $s=\\(Get-ChildItem $_ -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Path=$_; GB=[math]::Round\\($s/1GB,2\\)} } } | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem C:\\\\ -Directory -Force -ErrorAction SilentlyContinue | ForEach-Object { $s=\\(Get-ChildItem $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum\\).Sum; [PSCustomObject]@{Folder=$_.Name; GB=[math]::Round\\($s/1GB,2\\)} } | Sort-Object GB -Descending | Select-Object -First 8 | Format-Table -AutoSize)"
     ]
   }
 }
