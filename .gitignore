@@ -30,16 +30,7 @@ ENV/
 env.bak/
 venv.bak/
 .venv/
-
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask
-instance/
-.webassets-cache
+backend/venv/
 
 # Node.js / npm
 node_modules/
@@ -58,14 +49,7 @@ build/
 .turbo/
 dist/
 
-# Misc
-.DS_Store
-Thumbs.db
-*.pem
-*.key
-*.pub
-
-# Environment variables
+# Environment variables (never commit secrets)
 .env
 .env.local
 .env.*.local
@@ -73,21 +57,30 @@ Thumbs.db
 .env.development.local
 .env.test.local
 
+# Keys and lab artifacts
+*.pem
+*.key
+id_*
+*_rsa
+*_rsa.pub
+secret.txt*
+newkey*
+feature*.txt
+test*.txt
+
 # IDE / Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.sublime-project
-.sublime-workspace
 .project
 .pydevproject
 .settings/
-*.sublime-project
-*.sublime-workspace
 
 # OS
+.DS_Store
+Thumbs.db
 .AppleDouble
 .LSOverride
 ._*
@@ -109,4 +102,3 @@ htmlcov/
 .cache/
 *.bak
 *.tmp
-.DS_Store

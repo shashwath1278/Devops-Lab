@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
+const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000'
+
 const nextConfig = {
+  output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -10,7 +13,7 @@ const nextConfig = {
     return [
       {
         source: '/api/auth/register',
-        destination: 'http://127.0.0.1:8000/api/auth/register',
+        destination: `${backendUrl}/api/auth/register`,
       },
       {
         source: '/api/auth/:path*',
@@ -18,7 +21,7 @@ const nextConfig = {
       },
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ]
   },
