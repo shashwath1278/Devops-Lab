@@ -1,12 +1,13 @@
 -- Student Hub — run this entire file in Supabase SQL Editor (new project)
 
 -- ---------------------------------------------------------------------------
--- 1. Public user profiles (synced from auth.users on sign-up)
+-- 1. Public user profiles (local auth + optional Supabase Auth trigger)
+-- id is assigned by the backend on register (no auth.users FK required)
 -- ---------------------------------------------------------------------------
 create table if not exists public.users (
-  id uuid references auth.users on delete cascade not null primary key,
+  id uuid primary key,
   username text unique,
-  email text,
+  email text unique,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -26,6 +27,12 @@ drop policy if exists "Users can update own profile." on public.users;
 create policy "Users can update own profile."
   on public.users for update
   using ( auth.uid() = id );
+
+drop policy if exists "Service can manage users for local auth." on public.users;
+create policy "Service can manage users for local auth."
+  on public.users for all
+  using ( true )
+  with check ( true );
 
 create or replace function public.handle_new_user()
 returns trigger

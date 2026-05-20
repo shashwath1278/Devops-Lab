@@ -8,6 +8,8 @@ from jose import jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
+from app.core.supabase import supabase
+
 router = APIRouter()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
@@ -72,6 +74,16 @@ def _issue_token(user_id: str, username: str, email: Optional[str]) -> dict:
     }
 
 
+def _sync_user_to_supabase(user_id: str, username: str, email: str) -> None:
+    """Insert profile so documents.uploaded_by FK is satisfied."""
+    try:
+        supabase.table("users").upsert(
+            {"id": user_id, "username": username, "email": email}
+        ).execute()
+    except Exception as e:
+        print(f"public.users sync failed: {e}")
+
+
 def _find_user(identifier: str) -> Optional[dict]:
     identifier = identifier.strip()
     if identifier in users_by_username:
@@ -107,6 +119,8 @@ async def register(user: UserCreate):
     }
     users_by_username[username] = record
     users_by_email[email] = record
+
+    _sync_user_to_supabase(user_id, username, email)
 
     return _issue_token(user_id, username, email)
 

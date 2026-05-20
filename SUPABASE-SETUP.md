@@ -26,6 +26,8 @@ Use this after your old project was paused (90+ days). The backend uses **Supaba
 2. Paste the full contents of `backend/setup.sql` from this repo.
 3. **Run**.
 
+If the project already exists and you use **local auth** (backend in-memory register), also run **`backend/migrate-local-auth.sql`** once. That drops the `auth.users` foreign key so register can insert into `public.users`.
+
 You should see tables `public.users` and `public.documents` under **Table Editor**.
 
 ---
