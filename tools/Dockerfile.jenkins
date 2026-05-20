@@ -1,0 +1,13 @@
+# Jenkins LTS with the Docker CLI installed, so pipeline 'docker build/push' steps work.
+# The stock jenkins/jenkins image has no docker binary; the host daemon is reached via the
+# mounted /var/run/docker.sock (see docker-compose.tools.yml).
+
+FROM jenkins/jenkins:lts
+
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends docker.io \
+ && rm -rf /var/lib/apt/lists/*
+RUN usermod -aG docker jenkins
+
+USER jenkins

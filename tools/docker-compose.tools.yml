@@ -1,0 +1,36 @@
+# DevOps tooling stack — run from the tools/ directory:
+#   docker compose -f docker-compose.tools.yml up -d
+#
+#   Jenkins   -> http://localhost:8080
+#   SonarQube -> http://localhost:9000  (default login admin / admin)
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_exts:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+
+volumes:
+  jenkins_home:
+  sonar_data:
+  sonar_exts:
+  sonar_logs:
