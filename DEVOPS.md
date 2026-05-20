@@ -8,11 +8,11 @@ Docker, SonarQube, and Vercel**. Use it as the reference for the lab demo.
 ```
 GitHub (main)  ── push ──┬──> Jenkins pipeline (primary CI/CD)
                          │      Checkout → Dependency-Check → SonarQube
-                         │      → Quality Gate → Docker Build → Docker Push (Docker Hub)
+                         │      → Docker Build → Docker Push (Docker Hub)
                          │
                          ├──> Azure DevOps pipeline (azure-pipelines.yml)
                          │      Checkout → install Node → npm install/test
-                         │      runs on self-hosted agent 'shrutijr' in pool 'shruti'
+                         │      runs on self-hosted agent 'shashwath' in pool 'shashwath'
                          │
                          └──> Vercel (auto-deploy frontend on push)
 
@@ -36,9 +36,9 @@ Docker Hub images ──> Azure Container Instances (live backend) <── Verce
 
 | File | Purpose |
 |------|---------|
-| `Jenkinsfile` | 6-stage declarative Jenkins pipeline. |
+| `Jenkinsfile` | 5-stage declarative Jenkins pipeline. |
 | `sonar-project.properties` | SonarQube project + source/exclusion config. |
-| `azure-pipelines.yml` | Azure DevOps pipeline (pool `shruti`, agent `shrutijr`). |
+| `azure-pipelines.yml` | Azure DevOps pipeline (pool `shashwath`, agent `shashwath`). |
 | `tools/Dockerfile.jenkins` | Jenkins LTS image with the Docker CLI added. |
 | `tools/docker-compose.tools.yml` | Runs Jenkins + SonarQube locally. |
 | `backend/Dockerfile`, `frontend/Dockerfile` | Service images. |
@@ -50,10 +50,13 @@ Docker Hub images ──> Azure Container Instances (live backend) <── Verce
 2. **Dependency Check** — OWASP Dependency-Check scans for vulnerable dependencies; HTML + XML
    report published in Jenkins.
 3. **SonarQube Analysis** — `sonar-scanner` sends code to SonarQube for the security scan.
-4. **Quality Gate** — waits for the SonarQube gate result (`abortPipeline: false` — never fails
-   the demo build).
-5. **Docker Build** — builds `studenthub-backend` and `studenthub-frontend` images.
-6. **Docker Push** — logs in and pushes both images to Docker Hub.
+4. **Docker Build** — builds `studenthub-backend` and `studenthub-frontend` images.
+5. **Docker Push** — logs in and pushes both images to Docker Hub.
+
+> A SonarQube Quality Gate stage was intentionally left out: it needs a SonarQube → Jenkins
+> webhook, and SonarQube blocks webhooks to local/private IPs. The SonarQube **analysis** still
+> runs in stage 3 — results appear on the SonarQube dashboard, which is the security-check
+> deliverable.
 
 ## Setup (run once, the night before)
 
@@ -65,36 +68,31 @@ docker compose up -d            # frontend :3000, backend :8000
 ```
 
 ### 2. Jenkins + SonarQube
-SonarQube via Docker:
-```bash
-cd tools
-docker compose -f docker-compose.tools.yml up -d
-# Jenkins   -> http://localhost:8080  (initial password: see container logs)
-# SonarQube -> http://localhost:9000  (admin / admin)
-```
-> The `Jenkinsfile` is written for a **Jenkins controller on Windows** (uses `bat` steps). The
-> `docker-compose.tools.yml` can still run SonarQube; run Jenkins natively on Windows, or switch
-> the Jenkinsfile `bat` steps to `sh` if you run Jenkins in the Linux container instead.
+The `Jenkinsfile` is written for a **Jenkins controller installed natively on Windows**
+(uses `bat` steps). SonarQube also runs natively on `http://localhost:9000`.
 
 In Jenkins:
 - Install plugins: **OWASP Dependency-Check**, **SonarQube Scanner**, **Docker Pipeline**.
-- *Manage Jenkins → Tools*: add Dependency-Check installation `dependency-check`,
-  SonarQube Scanner `sonar-scanner`.
+- *Manage Jenkins → Tools*: add a Dependency-Check installation named `dependency-check`
+  and a SonarQube Scanner named `sonar-scanner` (both "install automatically").
 - *Manage Jenkins → System → SonarQube servers*: add server `MySonarQube`,
-  URL `http://localhost:9000`, with a SonarQube token credential.
-- *Credentials*: add a Username/password credential with **ID exactly `dockerhub`**
-  (Docker Hub username + an access token). **Required — the Docker Push stage fails without it.**
+  URL `http://localhost:9000`, with the SonarQube token credential.
+- *Manage Jenkins → Credentials* — three credentials:
+  - `dockerhub` — Username/password (Docker Hub username + Read/Write access token).
+    **ID must be exactly `dockerhub`.**
+  - `nvd-api-key` — Secret text (free key from nvd.nist.gov). **ID must be exactly `nvd-api-key`.**
+  - SonarQube token — Secret text; any ID, selected in the SonarQube server config above.
 - Docker Desktop must be running, with `docker` on PATH for the Jenkins service account.
 - Create a Pipeline job → *Pipeline script from SCM* → this repo → `Jenkinsfile`.
 
-> First Dependency-Check run downloads the NVD feed and is slow — add a free NVD API key on the
-> tool, or run the stage once early so it caches.
+> The first Dependency-Check run downloads the full NVD database (~5–10 min even with the API
+> key). Run one build early so it caches; later runs are fast incremental updates.
 
 ### 3. Azure DevOps
 - Sign in (use college ID credentials if the normal login fails).
 - Create a project; connect this GitHub repo.
-- *Project settings → Agent pools* → create pool `shruti`.
-- Register a self-hosted agent named `shrutijr` in that pool (download agent, `./config`, `./run`).
+- *Project settings → Agent pools* → create pool `shashwath`.
+- Register a self-hosted agent named `shashwath` in that pool (download agent, `./config`, `./run`).
 - New pipeline → use the existing `azure-pipelines.yml`.
 
 ### 4. Vercel (frontend)
@@ -113,10 +111,10 @@ az container create -g studenthub-rg -n studenthub-backend \
 
 ## Demo runbook ("explain the pipeline")
 
-- **Open Jenkins** → show the pipeline job → walk the 6 stages → open the Dependency-Check HTML
+- **Open Jenkins** → show the pipeline job → walk the 5 stages → open the Dependency-Check HTML
   report and the SonarQube link → show the pushed image on Docker Hub.
-- **Open Azure DevOps** → show the pipeline run → `azure-pipelines.yml` → the `shruti` pool with
-  agent `shrutijr` online → the green run logs.
+- **Open Azure DevOps** → show the pipeline run → `azure-pipelines.yml` → the `shashwath` pool with
+  agent `shashwath` online → the green run logs.
 - **Open Vercel** → show the deployment list → the live URL → that a Git push triggers a redeploy.
 - **One-line summary:** "A push to GitHub `main` triggers both Jenkins (build → dependency &
   security scan → push image to Docker Hub) and Azure DevOps (build/test on our self-hosted
