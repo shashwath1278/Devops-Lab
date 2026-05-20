@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 import os
 from typing import Optional
@@ -7,8 +8,6 @@ from jose import jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
-from app.core.supabase import supabase
-
 router = APIRouter()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
@@ -16,6 +15,10 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# In-memory user store (per container process; resets on Azure restart)
+users_by_username: dict[str, dict] = {}
+users_by_email: dict[str, dict] = {}
 
 
 class UserCreate(BaseModel):
@@ -37,6 +40,14 @@ class Token(BaseModel):
     email: Optional[str] = None
 
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (
@@ -44,14 +55,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-def _table_rows(response) -> list:
-    if hasattr(response, "data") and response.data is not None:
-        return response.data
-    if isinstance(response, tuple) and len(response) > 1:
-        return response[1] or []
-    return []
 
 
 def _issue_token(user_id: str, username: str, email: Optional[str]) -> dict:
@@ -69,85 +72,49 @@ def _issue_token(user_id: str, username: str, email: Optional[str]) -> dict:
     }
 
 
+def _find_user(identifier: str) -> Optional[dict]:
+    identifier = identifier.strip()
+    if identifier in users_by_username:
+        return users_by_username[identifier]
+    if "@" in identifier:
+        return users_by_email.get(identifier.lower())
+    return None
+
+
 @router.post("/register", response_model=Token)
 async def register(user: UserCreate):
     if not user.email or "@" not in user.email:
         raise HTTPException(status_code=400, detail="Valid email is required")
 
-    try:
-        auth_res = supabase.auth.sign_up(
-            {
-                "email": user.email,
-                "password": user.password,
-                "options": {"data": {"username": user.username}},
-            }
-        )
-        if not auth_res.user:
-            raise HTTPException(status_code=400, detail="Registration failed")
-        user_id = auth_res.user.id
-    except HTTPException:
-        raise
-    except Exception as e:
-        message = str(e)
-        if "already registered" in message.lower():
-            raise HTTPException(
-                status_code=400, detail="Username or email already registered"
-            )
-        print(f"Supabase Auth Error: {e}")
-        detail = "Registration failed"
-        if "Name or service not known" in str(e):
-            detail = "Supabase URL is missing or invalid on the server (check SUPABASE_URL env)"
-        raise HTTPException(status_code=500, detail=detail)
+    username = user.username.strip()
+    email = user.email.strip().lower()
 
-    try:
-        supabase.table("users").insert(
-            {"id": user_id, "username": user.username, "email": user.email}
-        ).execute()
-    except Exception as e:
-        print(f"Note: public.users insert skipped or failed: {e}")
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
 
-    return _issue_token(user_id, user.username, user.email)
+    if username in users_by_username:
+        raise HTTPException(status_code=400, detail="Username already registered")
+
+    if email in users_by_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user_id = str(uuid.uuid4())
+    record = {
+        "id": user_id,
+        "username": username,
+        "email": email,
+        "hashed_password": get_password_hash(user.password),
+    }
+    users_by_username[username] = record
+    users_by_email[email] = record
+
+    return _issue_token(user_id, username, email)
 
 
 @router.post("/login", response_model=Token)
 async def login(user: UserLogin):
-    rows = _table_rows(
-        supabase.table("users")
-        .select("id, email, username")
-        .eq("username", user.username)
-        .limit(1)
-        .execute()
-    )
-    if not rows:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    profile = rows[0]
-    email = profile.get("email")
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account has no email on file",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        auth_res = supabase.auth.sign_in_with_password(
-            {"email": email, "password": user.password}
-        )
-        if not auth_res.user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        user_id = auth_res.user.id
-    except HTTPException:
-        raise
-    except Exception:
+    db_user = _find_user(user.username)
+    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -155,7 +122,7 @@ async def login(user: UserLogin):
         )
 
     return _issue_token(
-        user_id,
-        profile.get("username") or user.username,
-        email,
+        db_user["id"],
+        db_user["username"],
+        db_user.get("email"),
     )

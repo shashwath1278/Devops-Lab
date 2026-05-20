@@ -135,5 +135,5 @@ If the old Supabase project was paused, create a new project and follow **`SUPAB
 ## Known limitations (do not demo)
 
 - **Podcast feature** (`backend/app/api/podcast.py`) is incomplete and not wired into the app.
-- **Auth** uses an in-memory store — register and log in within the same session, or use the
-  built-in mock login (`username` / `password`).
+- **Auth** uses a local in-memory store on the backend (no Supabase signup emails). Users reset
+  when the Azure container restarts — register again after redeploy.
