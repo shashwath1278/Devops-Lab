@@ -27,8 +27,12 @@ pipeline {
 
     stage('Dependency Check') {                         // <-- the Dependency Check
       steps {
-        dependencyCheck additionalArguments: '--scan ./ --format HTML --format XML',
-                        odcInstallation: 'dependency-check'
+        // NVD API key kept out of the repo: stored as a Jenkins 'Secret text'
+        // credential with ID 'nvd-api-key'.
+        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+          dependencyCheck additionalArguments: "--scan ./ --format HTML --format XML --nvdApiKey ${NVD_API_KEY}",
+                          odcInstallation: 'dependency-check'
+        }
       }
       post {
         always {
