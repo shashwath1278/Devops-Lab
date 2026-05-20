@@ -11,14 +11,6 @@ from app.core.supabase import supabase
 
 router = APIRouter()
 
-
-def _require_supabase():
-    if supabase is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Supabase is not configured (check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)",
-        )
-
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -79,7 +71,6 @@ def _issue_token(user_id: str, username: str, email: Optional[str]) -> dict:
 
 @router.post("/register", response_model=Token)
 async def register(user: UserCreate):
-    _require_supabase()
     if not user.email or "@" not in user.email:
         raise HTTPException(status_code=400, detail="Valid email is required")
 
@@ -117,7 +108,6 @@ async def register(user: UserCreate):
 
 @router.post("/login", response_model=Token)
 async def login(user: UserLogin):
-    _require_supabase()
     rows = _table_rows(
         supabase.table("users")
         .select("id, email, username")
