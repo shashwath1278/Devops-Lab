@@ -16,7 +16,7 @@ class Document(DocumentBase):
     id: UUID
     file_url: str
     file_path: str
-    uploaded_by: UUID
+    uploaded_by: Optional[UUID] = None
     created_at: datetime
 
     class Config:

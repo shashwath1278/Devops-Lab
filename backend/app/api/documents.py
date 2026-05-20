@@ -9,6 +9,14 @@ import os
 
 router = APIRouter()
 
+
+def _normalize_document_row(row: dict) -> dict:
+    """Coerce Supabase rows so response validation matches the schema."""
+    out = dict(row)
+    if out.get("tags") is None:
+        out["tags"] = []
+    return out
+
 @router.post("/upload", response_model=Document)
 async def upload_document(
     file: UploadFile = File(...),
@@ -72,7 +80,8 @@ async def get_documents(
         query = query.ilike("title", f"%{search}%")
         
     data, count = query.execute()
-    return data[1]
+    rows = data[1] if data and len(data) > 1 else []
+    return [_normalize_document_row(row) for row in rows]
 
 @router.delete("/{document_id}")
 async def delete_document(
@@ -86,7 +95,8 @@ async def delete_document(
     
     document = data[1][0]
     
-    if str(document.get("uploaded_by")) != str(user_id):
+    owner = document.get("uploaded_by")
+    if owner is not None and str(owner) != str(user_id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # 2. Delete from Storage

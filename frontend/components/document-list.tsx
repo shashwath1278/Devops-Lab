@@ -18,7 +18,7 @@ interface Document {
   subject: string
   tags: string[]
   file_url: string
-  uploaded_by: string
+  uploaded_by?: string | null
 }
 
 export default function DocumentList() {
