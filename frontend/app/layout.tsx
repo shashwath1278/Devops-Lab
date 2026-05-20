@@ -1,18 +1,25 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { DM_Sans, Source_Serif_4 } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ClientSessionProvider } from "@/components/session-provider"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+})
+
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  variable: "--font-source-serif",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: "Student Hub - Document Management & AI Assistant",
-  description: "A modern platform for students to manage documents and collaborate with AI",
-  generator: "elio.app",
-
+  title: "Student Hub — Notes, Library & AI Study",
+  description: "Upload course materials, share a document library, and study with AI tools.",
 }
 
 export default function RootLayout({
@@ -22,8 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased`}>
-        {/* <CHANGE> Wrap with SessionProvider for NextAuth */}
+      <body className={`${dmSans.variable} ${sourceSerif.variable} font-sans antialiased`}>
         <ClientSessionProvider>
           {children}
           <Analytics />

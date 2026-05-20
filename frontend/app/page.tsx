@@ -2,17 +2,21 @@
 
 import { redirect } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { motion } from "framer-motion"
 import DashboardHeader from "@/components/dashboard-header"
 import UploadComponent from "@/components/upload-component"
 import DocumentList from "@/components/document-list"
 import ChatComponent from "@/components/chat-component"
+import { Library, Upload } from "lucide-react"
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
 
   if (status === "loading") {
-    return null
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    )
   }
 
   if (!session) {
@@ -20,29 +24,41 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen">
+    <div className="min-h-screen">
       <DashboardHeader userName={session.user?.name || "Student"} />
 
-      <div className="container mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-        >
-          {/* Left Column: Upload Widget */}
-          <div className="lg:col-span-1 space-y-6">
+      <section className="border-b border-border/60 bg-card/40">
+        <div className="container mx-auto px-4 py-8 md:py-10">
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            Your study desk
+          </h1>
+          <p className="mt-2 max-w-2xl text-muted-foreground">
+            Upload notes, browse the shared library, and use AI tools on the files you&apos;ve added.
+          </p>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-4 py-8 md:py-10">
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <div className="xl:col-span-4">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Upload className="h-4 w-4 text-accent" />
+              Add material
+            </div>
             <UploadComponent token={(session as { token?: string }).token} />
           </div>
 
-          {/* Right Column: Document Library */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-8">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Library className="h-4 w-4 text-primary" />
+              Library
+            </div>
             <DocumentList />
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </main>
 
       <ChatComponent />
-    </main>
+    </div>
   )
 }

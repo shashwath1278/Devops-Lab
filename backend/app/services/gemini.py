@@ -16,35 +16,62 @@ IMPORTANT: You must NEVER mention that you are powered by Groq, OpenAI, or any o
 You are strictly the "Student Hub Bot".
 
 BEHAVIORAL GUIDELINES (STUDY MODE):
-1. **Interactive & Socratic**: Do NOT just dump the entire content of a document when asked about it. Instead, ask the user what specific part, concept, or chapter they want to focus on.
-2. **Guide, Don't Just Solve**: When asked a question, provide a clear explanation but also encourage critical thinking. Ask follow-up questions to check understanding.
-3. **Concise & Academic**: Keep your initial responses concise. If the user wants more detail, they will ask. Use an encouraging and academic tone.
-4. **Context Usage**: You will receive text from uploaded documents. Use this knowledge to answer questions, but do not regurgitate large chunks of text unless explicitly asked to "summarize the whole document".
+1. **Notes-only**: If the user message includes a "Notes file:" or "notes excerpt" section, answer ONLY from that text. Never invent units, chapters, or topics that are not in the excerpt.
+2. **No hallucination**: If asked about "unit 2" but the excerpt is only for another unit, say you do not have unit 2 in the provided file — do NOT describe unit 2 from general knowledge.
+3. **Missing info**: If the excerpt does not contain the answer, say clearly: "This is not covered in the uploaded notes."
+4. **Concise & Academic**: Keep answers focused on the excerpt. Use an encouraging tone.
 
-CONTEXT INSTRUCTIONS:
-You may receive text from uploaded documents labeled "Context from uploaded documents". 
-You MUST use this text to answer the user's questions. 
-Do NOT claim you cannot read files; if the text is provided in the prompt, you HAVE read it. 
-Treat this context as knowledge you possess."""
+When NO notes excerpt is included in the prompt, you should not answer course content questions (the app will handle that separately)."""
 
-def get_chat_response(message: str, history: list = []):
+CHAT_MODEL = os.environ.get("GROQ_CHAT_MODEL", "llama-3.1-8b-instant")
+MAX_HISTORY_TURNS = 6
+MAX_HISTORY_CHARS = 400
+MAX_USER_MESSAGE_CHARS = 14_000
+
+
+def _truncate(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "\n...[truncated for length]"
+
+
+def get_chat_response(message: str, history: list = None):
     if not client:
         return "Groq API Key not configured."
-    
+
+    history = history or []
+
     try:
-        # Prepare messages: system prompt + history + current message
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        messages.extend(history)
-        messages.append({"role": "user", "content": message})
-        
-        completion = client.chat.completions.create(
-            model="groq/compound", 
-            messages=messages
+        for msg in history[-MAX_HISTORY_TURNS:]:
+            role = msg.get("role", "user")
+            if role not in ("user", "assistant"):
+                role = "user"
+            messages.append(
+                {
+                    "role": role,
+                    "content": _truncate(str(msg.get("content", "")), MAX_HISTORY_CHARS),
+                }
+            )
+        messages.append(
+            {"role": "user", "content": _truncate(message, MAX_USER_MESSAGE_CHARS)}
         )
-        
+
+        completion = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=messages,
+            max_tokens=1024,
+        )
+
         return completion.choices[0].message.content
     except Exception as e:
-        return f"Error communicating with Groq: {str(e)}"
+        err = str(e)
+        if "413" in err or "request_too_large" in err.lower():
+            return (
+                "That question used too much document text at once. "
+                "Try a shorter question or ask about one specific topic from the unit."
+            )
+        return f"Error communicating with Groq: {err}"
 
 def generate_flashcards(text: str) -> str:
     if not client:

@@ -83,28 +83,30 @@ export default function ChatComponent() {
     <>
       {/* Floating Button */}
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg hover:shadow-xl transition-all transform duration-200 ${isOpen ? "bg-accent text-accent-foreground scale-110" : "bg-primary text-primary-foreground hover:scale-110"
-          }`}
+        className={`fixed bottom-6 right-6 z-50 rounded-full p-4 shadow-lg transition-all duration-200 ${
+          isOpen
+            ? "bg-accent text-accent-foreground"
+            : "bg-primary text-primary-foreground hover:shadow-xl"
+        }`}
         title={isOpen ? "Close chat" : "Open chat"}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
+        {isOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
       </button>
 
-      {/* Chat Window - Responsive */}
       {isOpen && (
         <Card
-          className={`fixed bottom-24 right-6 flex flex-col shadow-2xl border-0 z-40 bg-card rounded-2xl overflow-hidden transition-all duration-300 ease-in-out
-            ${isExpanded
-              ? "w-[800px] h-[80vh] max-w-[calc(100vw-32px)]"
-              : "w-[450px] h-[600px] max-w-[calc(100vw-32px)]"
-            }`}
+          className={`fixed bottom-24 right-6 z-40 flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl transition-all duration-300 ${
+            isExpanded
+              ? "h-[80vh] w-[800px] max-w-[calc(100vw-32px)]"
+              : "h-[600px] w-[450px] max-w-[calc(100vw-32px)]"
+          }`}
         >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-4 rounded-t-2xl flex justify-between items-center">
+          <div className="flex items-center justify-between border-b border-border bg-primary px-4 py-3.5 text-primary-foreground">
             <div>
-              <h3 className="font-semibold text-lg">Study Assistant</h3>
-              <p className="text-xs text-primary-foreground/80">Powered by AI</p>
+              <h3 className="font-serif text-lg font-semibold">Study assistant</h3>
+              <p className="text-xs text-primary-foreground/75">Answers from your uploaded notes</p>
             </div>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
@@ -120,9 +122,9 @@ export default function ChatComponent() {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center px-2">
                 <MessageCircle className="w-12 h-12 text-muted-foreground/30 mb-3" />
-                <p className="text-sm text-muted-foreground font-medium">Welcome to Study Assistant</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Ask questions about your documents or get help with your studies
+                <p className="text-sm font-medium text-foreground">Ask about your library</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Mention a unit or title (e.g. &quot;block chain unit 4&quot;) so I use that file.
                 </p>
               </div>
             ) : (
@@ -181,14 +183,14 @@ export default function ChatComponent() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
-                className="border-input text-sm"
+                className="rounded-lg text-sm"
                 autoFocus
               />
               <Button
                 type="submit"
                 disabled={loading || !input.trim()}
                 size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90 px-3 transition-colors"
+                className="rounded-lg bg-accent px-3 text-accent-foreground hover:bg-accent/90"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>

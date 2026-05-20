@@ -2,26 +2,35 @@ from app.core.supabase import supabase
 import io
 from pypdf import PdfReader
 
-async def fetch_document_content(file_path: str) -> str:
+def _best_snippet(text: str, limit: int) -> str:
+    """Skip empty PDF headers; take a useful chunk for the LLM."""
+    cleaned = text.strip()
+    if not cleaned:
+        return ""
+    if len(cleaned) <= limit:
+        return cleaned
+    # Large notes PDFs often have blank cover pages — skip a little at the start
+    start = min(1500, len(cleaned) // 5) if len(cleaned) > limit * 2 else 0
+    return cleaned[start : start + limit]
+
+
+async def fetch_document_content(file_path: str, max_chars: int = 8000) -> str:
     try:
-        # Use Supabase Storage directly to download the file
-        # This avoids URL encoding issues with httpx
         response = supabase.storage.from_("textbooks").download(file_path)
-        
-        # response is bytes
         file_content = response
-        
-        # Check if PDF based on extension (simple check)
+
         if file_path.lower().endswith(".pdf"):
             pdf_file = io.BytesIO(file_content)
             reader = PdfReader(pdf_file)
-            text = ""
+            parts = []
             for page in reader.pages:
-                text += page.extract_text() + "\n"
-            return text
-        else:
-            # Assume text/markdown
-            return file_content.decode("utf-8")
+                page_text = (page.extract_text() or "").strip()
+                if page_text:
+                    parts.append(page_text)
+            full_text = "\n\n".join(parts)
+            return _best_snippet(full_text, max_chars)
+
+        return _best_snippet(file_content.decode("utf-8", errors="ignore"), max_chars)
     except Exception as e:
-        print(f"Error fetching document: {e}")
+        print(f"Error fetching document {file_path}: {e}")
         return ""

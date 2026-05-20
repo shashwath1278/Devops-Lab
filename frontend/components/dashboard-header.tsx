@@ -1,9 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useSession, signOut } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { LogOut, Menu, X } from "lucide-react"
+import { LogOut, Menu, X, BookOpen } from "lucide-react"
 import Link from "next/link"
 
 interface DashboardHeaderProps {
@@ -11,62 +11,64 @@ interface DashboardHeaderProps {
 }
 
 export default function DashboardHeader({ userName }: DashboardHeaderProps) {
-  const { data: session } = useSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-white/70 dark:bg-black/70 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-card/85 backdrop-blur-md">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo Section */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">SH</span>
+        <div className="flex h-[4.25rem] items-center justify-between">
+          <Link href="/" className="group flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-transform group-hover:scale-[1.02]">
+              <BookOpen className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <div className="hidden sm:block">
+              <span className="font-serif text-lg font-semibold tracking-tight text-foreground">
+                Student Hub
+              </span>
+              <span className="block text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Study workspace
+              </span>
             </div>
-            <span className="font-bold text-lg text-foreground hidden sm:inline">Student Hub</span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Welcome,</span>
+          <div className="hidden items-center gap-4 md:flex">
+            <div className="rounded-full border border-border bg-secondary/60 px-4 py-1.5 text-sm">
+              <span className="text-muted-foreground">Signed in as </span>
               <span className="font-medium text-foreground">{userName}</span>
             </div>
-
             <Button
               variant="outline"
               size="sm"
-              onClick={() => signOut({ redirect: true, callbackUrl: "/auth/signin" })}
-              className="border-border"
+              onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              className="rounded-lg border-border"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </Button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="rounded-lg p-2 hover:bg-secondary md:hidden"
+            aria-label="Menu"
           >
-            {mobileMenuOpen ? <X className="w-5 h-5 text-foreground" /> : <Menu className="w-5 h-5 text-foreground" />}
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 space-y-3">
-            <div className="px-2 py-2 text-sm">
-              <span className="text-muted-foreground">Welcome, </span>
-              <span className="font-medium text-foreground">{userName}</span>
-            </div>
+          <div className="space-y-3 border-t border-border py-4 md:hidden">
+            <p className="text-sm text-muted-foreground">
+              Signed in as <span className="font-medium text-foreground">{userName}</span>
+            </p>
             <Button
               variant="outline"
-              className="w-full border-border bg-transparent"
-              onClick={() => signOut({ redirect: true, callbackUrl: "/auth/signin" })}
+              className="w-full"
+              onClick={() => signOut({ callbackUrl: "/auth/signin" })}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </Button>
           </div>
         )}

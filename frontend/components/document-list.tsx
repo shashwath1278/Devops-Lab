@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Search, Trash2, FileText, Loader2, Eye, AlertCircle } from "lucide-react"
+import { Search, Trash2, FileText, Loader2, Eye, AlertCircle, Zap, ClipboardList } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Document {
@@ -209,24 +209,24 @@ export default function DocumentList() {
 
   return (
     <>
-      <Card className="border-0 shadow-xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
+      <Card className="border border-border/80 bg-card shadow-[0_8px_30px_rgba(28,25,23,0.06)]">
+        <CardHeader className="border-b border-border/60 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-accent" />
-                Document Library
+              <CardTitle className="flex items-center gap-2 font-serif text-xl">
+                <FileText className="h-5 w-5 text-primary" />
+                Document library
               </CardTitle>
-              <CardDescription>Browse and manage shared documents</CardDescription>
+              <CardDescription>Search, view, and study shared uploads</CardDescription>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={fetchDocuments}
               disabled={loading}
-              className="border-border bg-transparent"
+              className="rounded-lg"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
             </Button>
           </div>
         </CardHeader>
@@ -239,7 +239,7 @@ export default function DocumentList() {
               placeholder="Search by title, description, or subject..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 border-input"
+              className="h-11 rounded-lg border-border bg-background pl-10"
             />
           </div>
 
@@ -267,19 +267,18 @@ export default function DocumentList() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {filteredDocuments.map((doc) => (
                 <div
                   key={doc.id}
-                  className="group border border-border rounded-lg p-4 hover:border-accent/50 hover:bg-secondary/50 transition-all duration-200 hover:shadow-md"
+                  className="group rounded-xl border border-border bg-background/60 p-5 transition-all duration-200 hover:border-primary/25 hover:shadow-md"
                 >
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-serif text-lg font-semibold text-foreground transition-colors group-hover:text-primary">
                         {doc.title}
                       </h3>
-                      <p className="text-xs text-muted-foreground">by {doc.uploaded_by}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{doc.subject || "General"}</p>
                     </div>
 
                     <button
@@ -301,11 +300,13 @@ export default function DocumentList() {
                   <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{doc.description || "No description"}</p>
 
                   {/* Subject Badge */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <Badge variant="secondary" className="bg-secondary text-foreground">
-                      {doc.subject}
-                    </Badge>
-                  </div>
+                  {doc.subject && (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="rounded-md bg-primary/10 text-primary">
+                        {doc.subject}
+                      </Badge>
+                    </div>
+                  )}
 
                   {/* Tags */}
                   {doc.tags && doc.tags.length > 0 && (
@@ -324,44 +325,45 @@ export default function DocumentList() {
                   )}
 
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => window.open(doc.file_url, "_blank")}
-                      className="flex-1 border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                      className="flex-1 rounded-lg"
                     >
-                      <Eye className="w-4 h-4 mr-2" />
+                      <Eye className="mr-2 h-4 w-4" />
                       View
                     </Button>
                     <Button
-                      variant="default"
                       size="sm"
                       onClick={() => handleGenerateFlashcards(doc.id)}
                       disabled={generatingId === doc.id}
-                      className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      className="flex-1 rounded-lg bg-primary"
                     >
                       {generatingId === doc.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <>
-                          <span className="mr-2">⚡</span> Study
+                          <Zap className="mr-2 h-4 w-4" />
+                          Cards
                         </>
                       )}
                     </Button>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       onClick={() => handleGenerateQuiz(doc.id)}
                       disabled={generatingQuizId === doc.id}
-                      className="flex-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 transition-colors"
-                      title="Take a Quiz"
+                      className="flex-1 rounded-lg border-accent/40 text-accent hover:bg-accent/10"
+                      title="Take a quiz"
                     >
                       {generatingQuizId === doc.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <>
-                          <span className="mr-2">📝</span> Quiz
+                          <ClipboardList className="mr-2 h-4 w-4" />
+                          Quiz
                         </>
                       )}
                     </Button>

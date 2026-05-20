@@ -133,13 +133,13 @@ export default function UploadComponent({ token }: UploadComponentProps) {
   }
 
   return (
-    <Card className="h-full border-0 shadow-lg sticky top-24">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Cloud className="w-5 h-5 text-accent" />
-          Upload Document
+    <Card className="sticky top-28 border border-border/80 bg-card shadow-[0_8px_30px_rgba(28,25,23,0.06)]">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <CardTitle className="flex items-center gap-2 font-serif text-xl">
+          <Cloud className="h-5 w-5 text-accent" />
+          Upload document
         </CardTitle>
-        <CardDescription>Share your study materials and notes</CardDescription>
+        <CardDescription>PDFs and study files for your class</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -149,8 +149,10 @@ export default function UploadComponent({ token }: UploadComponentProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${
-              isDragging ? "border-accent bg-accent/10" : "border-border hover:border-accent/50 hover:bg-secondary/50"
+            className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${
+              isDragging
+                ? "border-accent bg-accent/5"
+                : "border-border bg-secondary/30 hover:border-primary/30 hover:bg-secondary/50"
             }`}
           >
             <input
@@ -232,7 +234,7 @@ export default function UploadComponent({ token }: UploadComponentProps) {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10"
+            className="h-11 w-full rounded-lg bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
           >
             {loading ? (
               <>
