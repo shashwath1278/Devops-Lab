@@ -1,12 +1,19 @@
-// Student Hub — primary CI/CD pipeline
-// Runs on a Linux Jenkins agent (Jenkins-in-Docker). See tools/docker-compose.tools.yml.
-// Required plugins: OWASP Dependency-Check, SonarQube Scanner, Docker Pipeline.
+// Student Hub - primary CI/CD pipeline
+// Configured for a Jenkins controller running on WINDOWS (uses 'bat' steps).
+//
+// Required Jenkins plugins:  OWASP Dependency-Check, SonarQube Scanner, Docker Pipeline,
+//                            Credentials Binding.
+// Required Jenkins config:
+//   - Tools:        a Dependency-Check install named 'dependency-check'
+//                   a SonarQube Scanner install named 'sonar-scanner'
+//   - System:       a SonarQube server named 'MySonarQube'
+//   - Credentials:  a Username/password credential with ID 'dockerhub'
+//   - Docker Desktop must be running and 'docker' on PATH for the Jenkins service account.
 
 pipeline {
   agent any
 
   environment {
-    DOCKERHUB      = credentials('dockerhub')          // Jenkins username/password credential
     IMAGE_BACKEND  = "shash1278/studenthub-backend"
     IMAGE_FRONTEND = "shash1278/studenthub-frontend"
   }
@@ -33,7 +40,7 @@ pipeline {
     stage('SonarQube Analysis') {                       // <-- the Security/Vulnerability Check
       steps {
         withSonarQubeEnv('MySonarQube') {
-          sh "${tool 'sonar-scanner'}/bin/sonar-scanner"
+          bat "\"${tool('sonar-scanner')}\\bin\\sonar-scanner.bat\""
         }
       }
     }
@@ -48,23 +55,29 @@ pipeline {
 
     stage('Docker Build') {
       steps {
-        sh 'docker build -t $IMAGE_BACKEND:$BUILD_NUMBER  -t $IMAGE_BACKEND:latest  ./backend'
-        sh 'docker build -t $IMAGE_FRONTEND:$BUILD_NUMBER -t $IMAGE_FRONTEND:latest ./frontend'
+        bat "docker build -t ${IMAGE_BACKEND}:${BUILD_NUMBER} -t ${IMAGE_BACKEND}:latest ./backend"
+        bat "docker build -t ${IMAGE_FRONTEND}:${BUILD_NUMBER} -t ${IMAGE_FRONTEND}:latest ./frontend"
       }
     }
 
     stage('Docker Push') {
       steps {
-        sh 'echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USR --password-stdin'
-        sh 'docker push $IMAGE_BACKEND:$BUILD_NUMBER  && docker push $IMAGE_BACKEND:latest'
-        sh 'docker push $IMAGE_FRONTEND:$BUILD_NUMBER && docker push $IMAGE_FRONTEND:latest'
+        withCredentials([usernamePassword(credentialsId: 'dockerhub',
+                                          usernameVariable: 'DH_USER',
+                                          passwordVariable: 'DH_PASS')]) {
+          bat 'echo %DH_PASS%| docker login -u %DH_USER% --password-stdin'
+          bat "docker push ${IMAGE_BACKEND}:${BUILD_NUMBER}"
+          bat "docker push ${IMAGE_BACKEND}:latest"
+          bat "docker push ${IMAGE_FRONTEND}:${BUILD_NUMBER}"
+          bat "docker push ${IMAGE_FRONTEND}:latest"
+        }
       }
     }
   }
 
   post {
-    always  { sh 'docker logout || true' }
-    success { echo 'Pipeline complete — images pushed to Docker Hub.' }
-    failure { echo 'Pipeline failed — check the stage logs above.' }
+    always  { bat returnStatus: true, script: 'docker logout' }
+    success { echo 'Pipeline complete - images pushed to Docker Hub.' }
+    failure { echo 'Pipeline failed - check the stage logs above.' }
   }
 }

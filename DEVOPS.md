@@ -65,19 +65,26 @@ docker compose up -d            # frontend :3000, backend :8000
 ```
 
 ### 2. Jenkins + SonarQube
+SonarQube via Docker:
 ```bash
 cd tools
 docker compose -f docker-compose.tools.yml up -d
 # Jenkins   -> http://localhost:8080  (initial password: see container logs)
 # SonarQube -> http://localhost:9000  (admin / admin)
 ```
+> The `Jenkinsfile` is written for a **Jenkins controller on Windows** (uses `bat` steps). The
+> `docker-compose.tools.yml` can still run SonarQube; run Jenkins natively on Windows, or switch
+> the Jenkinsfile `bat` steps to `sh` if you run Jenkins in the Linux container instead.
+
 In Jenkins:
 - Install plugins: **OWASP Dependency-Check**, **SonarQube Scanner**, **Docker Pipeline**.
 - *Manage Jenkins → Tools*: add Dependency-Check installation `dependency-check`,
   SonarQube Scanner `sonar-scanner`.
 - *Manage Jenkins → System → SonarQube servers*: add server `MySonarQube`,
-  URL `http://sonarqube:9000`, with a SonarQube token credential.
-- *Credentials*: add `dockerhub` (Docker Hub username/password).
+  URL `http://localhost:9000`, with a SonarQube token credential.
+- *Credentials*: add a Username/password credential with **ID exactly `dockerhub`**
+  (Docker Hub username + an access token). **Required — the Docker Push stage fails without it.**
+- Docker Desktop must be running, with `docker` on PATH for the Jenkins service account.
 - Create a Pipeline job → *Pipeline script from SCM* → this repo → `Jenkinsfile`.
 
 > First Dependency-Check run downloads the NVD feed and is slow — add a free NVD API key on the
