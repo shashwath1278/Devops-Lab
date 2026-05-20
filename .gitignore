@@ -10,8 +10,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib dirs (not frontend/lib — shadcn utils live there)
 lib64/
+**/venv/lib/
+**/venv/lib64/
+**/site-packages/
+!frontend/lib/
+!frontend/lib/**
 parts/
 sdist/
 var/
