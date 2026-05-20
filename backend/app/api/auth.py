@@ -94,7 +94,10 @@ async def register(user: UserCreate):
                 status_code=400, detail="Username or email already registered"
             )
         print(f"Supabase Auth Error: {e}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+        detail = "Registration failed"
+        if "Name or service not known" in str(e):
+            detail = "Supabase URL is missing or invalid on the server (check SUPABASE_URL env)"
+        raise HTTPException(status_code=500, detail=detail)
 
     try:
         supabase.table("users").insert(
