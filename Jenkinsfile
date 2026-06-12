@@ -14,8 +14,8 @@ pipeline {
   agent any
 
   environment {
-    IMAGE_BACKEND  = "shash1278/studenthub-backend"
-    IMAGE_FRONTEND = "shash1278/studenthub-frontend"
+    IMAGE_BACKEND  = "astroloop20/studenthub-backend"
+    IMAGE_FRONTEND = "astroloop20/studenthub-frontend"
   }
 
   stages {
