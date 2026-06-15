@@ -102,6 +102,7 @@ ehthumbs.db
 coverage/
 .pytest_cache/
 htmlcov/
+.coverage
 
 # Misc
 .cache/

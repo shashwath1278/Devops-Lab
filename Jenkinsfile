@@ -62,10 +62,11 @@ pipeline {
 
           Write-Host "Running backend tests in Docker..."
           docker run --rm `
+            -e COVERAGE_FILE=/tmp/.coverage `
             -v "${backend}:/app" `
             -w /app `
             python:3.11-slim `
-            bash -lc "pip install -q -r requirements.txt -r requirements-dev.txt && pytest tests/ --cov=app --cov-report=xml:coverage.xml"
+            bash -lc "pip install -q --root-user-action=ignore -r requirements.txt -r requirements-dev.txt && pytest tests/ --cov=app --cov-report=xml:/tmp/coverage.xml && cp /tmp/coverage.xml /app/coverage.xml"
           if ($LASTEXITCODE -ne 0) { throw "Backend tests failed (exit $LASTEXITCODE)" }
 
           Write-Host "Running frontend tests in Docker..."
