@@ -28,9 +28,6 @@ async def generate_quiz_endpoint(request: GenerateQuizRequest):
             max_chars=4500,
         )
         
-        if not content:
-            raise HTTPException(status_code=500, detail="Failed to read document content")
-            
         # 3. Generate Quiz
         quiz_json_str = generate_quiz(content)
         
@@ -55,6 +52,8 @@ async def generate_quiz_endpoint(request: GenerateQuizRequest):
     except GroqStudyError as e:
         status = 413 if e.too_large else 502
         raise HTTPException(status_code=status, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:

@@ -27,9 +27,6 @@ async def generate_flashcards_endpoint(request: GenerateFlashcardsRequest):
             max_chars=4500,
         )
         
-        if not content:
-            raise HTTPException(status_code=500, detail="Failed to read document content")
-            
         # 3. Generate Flashcards
         flashcards_json = generate_flashcards(content)
         
@@ -56,6 +53,8 @@ async def generate_flashcards_endpoint(request: GenerateFlashcardsRequest):
     except GroqStudyError as e:
         status = 413 if e.too_large else 502
         raise HTTPException(status_code=status, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except HTTPException:
         raise
     except Exception as e:
