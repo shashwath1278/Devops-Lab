@@ -17,7 +17,11 @@ def _normalize_document_row(row: dict) -> dict:
     return out
 
 
-@router.post("/upload", response_model=Document)
+@router.post(
+    "/upload",
+    response_model=Document,
+    responses={500: {"description": "Upload or storage failure"}},
+)
 async def upload_document(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -62,7 +66,11 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@router.get("/", response_model=List[Document])
+@router.get(
+    "/",
+    response_model=List[Document],
+    responses={500: {"description": "Failed to load documents from database"}},
+)
 async def get_documents(
     subject: Optional[str] = None,
     search: Optional[str] = None,
