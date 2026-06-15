@@ -52,6 +52,21 @@ pipeline {
       }
     }
 
+    stage('Tests & Coverage') {
+      steps {
+        bat '''
+          cd backend
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pytest tests/ --cov=app --cov-report=xml:coverage.xml
+        '''
+        bat '''
+          cd frontend
+          call npm ci
+          call npm run test:coverage
+        '''
+      }
+    }
+
     stage('SonarQube Analysis') {                       // <-- the Security/Vulnerability Check
       steps {
         withSonarQubeEnv('MySonarQube') {
