@@ -55,9 +55,14 @@ export default function DocumentList() {
         body: JSON.stringify({ document_id: docId }),
       })
 
-      if (!response.ok) throw new Error("Failed to generate quiz")
-
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const detail =
+          typeof data.detail === "string"
+            ? data.detail
+            : "Failed to generate quiz"
+        throw new Error(detail)
+      }
       if (data.quiz && data.quiz.length > 0) {
         setQuiz(data.quiz)
         setCurrentQuestionIndex(0)
@@ -71,7 +76,8 @@ export default function DocumentList() {
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to generate quiz. Please try again.",
+        description:
+          err instanceof Error ? err.message : "Failed to generate quiz. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -104,9 +110,15 @@ export default function DocumentList() {
         body: JSON.stringify({ document_id: docId }),
       })
 
-      if (!response.ok) throw new Error("Failed to generate flashcards")
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const detail =
+          typeof data.detail === "string"
+            ? data.detail
+            : "Failed to generate flashcards"
+        throw new Error(detail)
+      }
 
-      const data = await response.json()
       if (data.flashcards && data.flashcards.length > 0) {
         setFlashcards(data.flashcards)
         setCurrentCardIndex(0)
@@ -118,7 +130,10 @@ export default function DocumentList() {
     } catch (err) {
       toast({
         title: "Error",
-        description: "Failed to generate flashcards. Please try again.",
+        description:
+          err instanceof Error
+            ? err.message
+            : "Failed to generate flashcards. Please try again.",
         variant: "destructive",
       })
     } finally {

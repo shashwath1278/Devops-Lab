@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.services.document_service import fetch_document_content
-from app.services.gemini import generate_quiz
+from app.services.gemini import generate_quiz, GroqStudyError
 from app.core.supabase import supabase
 import json
 import re
@@ -23,7 +23,10 @@ async def generate_quiz_endpoint(request: GenerateQuizRequest):
         document = data[1][0]
         
         # 2. Fetch Content
-        content = await fetch_document_content(document["file_path"])
+        content = await fetch_document_content(
+            document["file_path"],
+            max_chars=4500,
+        )
         
         if not content:
             raise HTTPException(status_code=500, detail="Failed to read document content")
@@ -43,9 +46,16 @@ async def generate_quiz_endpoint(request: GenerateQuizRequest):
             quiz = json.loads(clean_json)
             return {"title": document["title"], "quiz": quiz}
         except json.JSONDecodeError:
-            print(f"Failed to parse quiz JSON: {quiz_json_str}")
-            # Fallback: Try to return raw text if parsing fails (frontend handles error)
-            raise HTTPException(status_code=500, detail="Failed to parse AI response into a valid quiz.")
-            
+            print(f"Failed to parse quiz JSON: {quiz_json_str[:500]}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to parse AI response into a valid quiz.",
+            )
+
+    except GroqStudyError as e:
+        status = 413 if e.too_large else 502
+        raise HTTPException(status_code=status, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

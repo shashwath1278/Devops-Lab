@@ -107,3 +107,7 @@ htmlcov/
 .cache/
 *.bak
 *.tmp
+
+# Lab work / archived reports (kept locally, not pushed)
+reports_old/
+Devops lab/

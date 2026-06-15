@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.services.document_service import fetch_document_content
-from app.services.gemini import generate_flashcards
+from app.services.gemini import generate_flashcards, GroqStudyError
 from app.core.supabase import supabase
 import json
 
@@ -22,7 +22,10 @@ async def generate_flashcards_endpoint(request: GenerateFlashcardsRequest):
         document = data[1][0]
         
         # 2. Fetch Content
-        content = await fetch_document_content(document["file_path"])
+        content = await fetch_document_content(
+            document["file_path"],
+            max_chars=4500,
+        )
         
         if not content:
             raise HTTPException(status_code=500, detail="Failed to read document content")
@@ -44,9 +47,16 @@ async def generate_flashcards_endpoint(request: GenerateFlashcardsRequest):
                 raise ValueError("No JSON array found in response")
                 
         except (json.JSONDecodeError, ValueError):
-            # Fallback if AI returns bad JSON
-            print(f"Bad JSON from AI: {flashcards_json}")
-            raise HTTPException(status_code=500, detail="AI failed to generate valid flashcards")
-            
+            print(f"Bad JSON from AI: {flashcards_json[:500]}")
+            raise HTTPException(
+                status_code=500,
+                detail="AI failed to generate valid flashcards",
+            )
+
+    except GroqStudyError as e:
+        status = 413 if e.too_large else 502
+        raise HTTPException(status_code=status, detail=str(e)) from e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

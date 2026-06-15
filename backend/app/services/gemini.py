@@ -24,9 +24,12 @@ BEHAVIORAL GUIDELINES (STUDY MODE):
 When NO notes excerpt is included in the prompt, you should not answer course content questions (the app will handle that separately)."""
 
 CHAT_MODEL = os.environ.get("GROQ_CHAT_MODEL", "llama-3.1-8b-instant")
+STUDY_MODEL = os.environ.get("GROQ_STUDY_MODEL", CHAT_MODEL)
 MAX_HISTORY_TURNS = 6
 MAX_HISTORY_CHARS = 400
 MAX_USER_MESSAGE_CHARS = 14_000
+MAX_QUIZ_SOURCE_CHARS = int(os.environ.get("GROQ_QUIZ_MAX_CHARS", "4500"))
+MAX_FLASHCARD_SOURCE_CHARS = int(os.environ.get("GROQ_FLASHCARD_MAX_CHARS", "4500"))
 
 
 def _truncate(text: str, limit: int) -> str:
@@ -73,81 +76,89 @@ def get_chat_response(message: str, history: list = None):
             )
         return f"Error communicating with Groq: {err}"
 
+class GroqStudyError(Exception):
+    """Raised when flashcard/quiz generation fails (e.g. payload too large)."""
+
+    def __init__(self, message: str, *, too_large: bool = False):
+        super().__init__(message)
+        self.too_large = too_large
+
+
+def _groq_study_error_message(err: str) -> GroqStudyError:
+    if "413" in err or "request_too_large" in err.lower():
+        return GroqStudyError(
+            "This document is too large to send to the AI at once. "
+            "Try a shorter PDF or split the notes into smaller files.",
+            too_large=True,
+        )
+    return GroqStudyError(f"AI request failed: {err}")
+
+
 def generate_flashcards(text: str) -> str:
     if not client:
         return "[]"
-    
+
+    excerpt = _truncate(text, MAX_FLASHCARD_SOURCE_CHARS)
+    prompt = f"""Generate 5 to 10 flashcards from the study notes below.
+Focus on key concepts and definitions.
+
+Return ONLY a JSON array. Each item: {{"question": "...", "answer": "..."}}
+No markdown, no commentary.
+
+Notes:
+{excerpt}"""
+
     try:
-        prompt = f"""
-        Generate 5 to 10 high-quality flashcards based on the following text.
-        Focus on key concepts, definitions, and important details.
-        
-        Return the result STRICTLY as a JSON array of objects, where each object has a 'question' and an 'answer'.
-        Do not include any markdown formatting (like ```json) or conversational text. Just the raw JSON string.
-        Start the response with '[' and end with ']'.
-        
-        Example format:
-        [
-            {{"question": "What is the capital of France?", "answer": "Paris"}},
-            {{"question": "Define photosynthesis.", "answer": "The process by which..."}}
-        ]
-        
-        Text to process:
-        {text[:15000]}... (Truncated)
-        """
-        
         completion = client.chat.completions.create(
-            model="groq/compound",
+            model=STUDY_MODEL,
             messages=[
-                {"role": "system", "content": "You are a helpful study assistant that generates flashcards."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You generate flashcards. Output valid JSON array only.",
+                },
+                {"role": "user", "content": prompt},
             ],
-            temperature=0.3 # Lower temperature for more deterministic/structured output
+            temperature=0.3,
+            max_tokens=2048,
         )
-        
         return completion.choices[0].message.content
     except Exception as e:
         print(f"Error generating flashcards: {e}")
-        return "[]"
+        raise _groq_study_error_message(str(e)) from e
+
 
 def generate_quiz(text: str) -> str:
     if not client:
-        return "Error: Groq client not initialized."
-    
+        raise GroqStudyError("Groq API key not configured.")
+
+    excerpt = _truncate(text, MAX_QUIZ_SOURCE_CHARS)
+    prompt = f"""Create a multiple-choice quiz with exactly 5 questions from these study notes.
+
+Rules:
+- 4 options per question (strings in "options" array)
+- "answer" is the 0-based index of the correct option
+- Short "explanation" for each question
+- Return ONLY a JSON array, no markdown
+
+Format:
+[{{"question":"...","options":["A","B","C","D"],"answer":0,"explanation":"..."}}]
+
+Notes:
+{excerpt}"""
+
     try:
-        prompt = f"""
-        Generate a Multiple Choice Quiz (5 questions) from the following text.
-        
-        **Rules:**
-        1. Create 5 challenging but fair questions.
-        2. Provide 4 options for each question.
-        3. Indicate the correct answer (0-3 index).
-        4. Provide a brief explanation for the correct answer.
-        5. Return STRICTLY a JSON array. No markdown, no "Here is the quiz".
-        
-        **JSON Format:**
-        [
-            {{
-                "question": "Question text?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "answer": 0, // Index of correct option
-                "explanation": "Why this is correct."
-            }}
-        ]
-        
-        **Text:**
-        {text[:15000]}... (Truncated)
-        """
-        
         completion = client.chat.completions.create(
-            model="groq/compound",
+            model=STUDY_MODEL,
             messages=[
-                {"role": "system", "content": "You are a teacher creating a quiz. Output valid JSON only."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "You create quizzes. Output valid JSON array only.",
+                },
+                {"role": "user", "content": prompt},
             ],
-            temperature=0.3
+            temperature=0.3,
+            max_tokens=2048,
         )
-        
         return completion.choices[0].message.content
     except Exception as e:
-        return f"Error generating quiz: {str(e)}"
+        raise _groq_study_error_message(str(e)) from e
