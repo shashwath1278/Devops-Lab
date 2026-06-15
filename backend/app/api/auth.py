@@ -14,7 +14,10 @@ router = APIRouter()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+# Match Next-Auth session length (30 days); was 30 minutes and caused "Invalid or expired token" on upload.
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(30 * 24 * 60))
+)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 

@@ -81,6 +81,12 @@ export default function UploadComponent({ token }: UploadComponentProps) {
       return
     }
 
+    if (!token) {
+      setErrorMessage("Please sign in again to upload.")
+      setUploadStatus("error")
+      return
+    }
+
     setLoading(true)
     try {
       const formData = new FormData()
@@ -96,7 +102,10 @@ export default function UploadComponent({ token }: UploadComponentProps) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({}))
+        if (response.status === 401) {
+          throw new Error("Session expired. Sign out and sign in again, then retry upload.")
+        }
         throw new Error(errorData.detail || "Upload failed")
       }
 
