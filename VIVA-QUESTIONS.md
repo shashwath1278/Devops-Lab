@@ -557,9 +557,11 @@ Vercel created Next.js, so it offers first-class, zero-config support for it.
 
 **Q1. Explain your complete CI/CD pipeline.**
 Code is hosted on GitHub. A push to `main` triggers two pipelines: **Jenkins** (checkout →
-OWASP Dependency-Check → SonarQube scan → Docker build → push to Docker Hub) and **Azure
-DevOps** (checkout → install Node → npm install/test on a self-hosted agent). The frontend
-is hosted on **Vercel**.
+OWASP Dependency-Check → SonarQube scan → Docker build → push to Docker Hub → **Deploy:
+redeploy backend container to Azure ACI + fire Vercel deploy hook in parallel**) and **Azure
+DevOps** (checkout → install Node → npm install/test on a self-hosted agent). The Next.js
+frontend is hosted on **Vercel**, and the FastAPI backend runs as a container on **Azure
+Container Instances**.
 
 **Q2. What happens when you push to `main`?**
 GitHub holds the new commit; Jenkins and Azure DevOps pick it up and run their pipelines,
@@ -570,7 +572,9 @@ GitHub (source), Jenkins (CI/CD + scans), Azure DevOps (second pipeline), Docker
 (images), SonarQube (security scan), Vercel (hosting).
 
 **Q4. Walk through your Jenkins pipeline stages.**
-Checkout → Dependency Check → SonarQube Analysis → Docker Build → Docker Push.
+Six stages: **Checkout → Dependency Check → SonarQube Analysis → Docker Build → Docker Push
+→ Deploy** (the Deploy stage runs two branches in parallel: Backend on Azure ACI, Frontend
+via Vercel deploy hook).
 
 **Q5. What does your Azure DevOps pipeline do?**
 Checks out the repo, installs Node.js, and runs `npm install` and `npm test` on a
@@ -613,3 +617,240 @@ deployed anywhere.
 
 **Q15. How does the user reach your application?**
 Through the Vercel-hosted frontend URL.
+
+**Q16. Explain the new Deploy stage.**
+After Docker Push, the Deploy stage runs two branches in parallel. The **Backend** branch
+runs `az login` with a service-principal credential, deletes the existing Azure Container
+Instance, and recreates it from the freshly pushed `:latest` backend image, passing Supabase
+and Groq secrets as secure environment variables. The **Frontend** branch sends an HTTP
+POST to a Vercel Deploy Hook URL, which queues a Next.js rebuild on Vercel.
+
+**Q17. Why is the Deploy stage parallel?**
+The Azure ACI redeploy takes ~30–60 seconds (delete + create) while the Vercel hook call
+returns immediately. Running them in parallel means the whole stage finishes as fast as the
+slower branch instead of adding them up.
+
+**Q18. Why delete + create instead of `az container restart`?**
+`az container restart` reuses the cached image; it does **not** re-pull `:latest` from Docker
+Hub. To force ACI to pick up the new image we have to delete the container and create it
+again with the same image name.
+
+**Q19. Where are the Supabase / Groq / JWT secrets stored for the redeploy?**
+As **Jenkins Secret-text credentials** (`supabase-url`, `supabase-service-role`,
+`groq-api-key`, `jwt-secret-key`). The pipeline injects them via `withCredentials` and
+passes them to `az container create --secure-environment-variables`, which stores them
+encrypted in Azure — they never appear in logs or in Git.
+
+**Q20. What's a Vercel Deploy Hook?**
+A unique URL Vercel generates per project/branch. POSTing to it triggers a build of that
+branch as if you had pushed to it. Used here because Jenkins owns the deploy decision —
+Vercel's own GitHub auto-deploy would still work too, but the hook makes Jenkins the single
+source of truth for "the new build is ready."
+
+---
+
+## 10. Reading Your Jenkins Build (What the Examiner Will See)
+
+This section is a cheat sheet for when the examiner points at your green build and asks
+"what is happening here?". Stages appear in this exact order in the Jenkins Stage View.
+
+### Stage 1 — Checkout
+The console shows `git fetch`, `rev-parse`, and `checkout -f <commit>`. **What to say**:
+"Jenkins pulled the latest commit from GitHub `main` into its workspace. This is the *SCM*
+step — version control is the single source of truth for the pipeline."
+
+### Stage 2 — Dependency Check (OWASP)
+Lines like `[INFO] Analysis Started`, `Finished Node Package Analyzer`, `Writing HTML/XML
+report`. **What to say**: "OWASP Dependency-Check scans every third-party library used by
+the frontend and backend, looks each one up in the NVD (US National Vulnerability Database),
+and produces a CVE report. This is the **SCA / Dependency Check** required for the lab."
+
+If they ask about the warning `node_modules directory does not exist`: that's just
+Dependency-Check noting it analyzed `package-lock.json` without an installed `node_modules`
+tree — the lock file is enough to identify versions, so the scan still works.
+
+### Stage 3 — SonarQube Analysis
+You'll see `SonarScanner CLI`, `Project key: student-hub`, `ANALYSIS SUCCESSFUL`, and a URL
+`http://localhost:9000/dashboard?id=student-hub`. **What to say**: "This is the **SAST /
+Vulnerability Check**. The Sonar Scanner sends source code (backend Python + frontend
+TypeScript) to the local SonarQube server, which runs ~6 language rule sets and reports
+bugs, vulnerabilities, code smells, and security hotspots."
+
+Open the dashboard URL in another tab as you explain — it's the strongest visual evidence
+that the scan ran.
+
+### Stage 4 — Docker Build
+You'll see two `docker build` invocations: one for `./backend`, one for `./frontend`. Each
+builds in seconds when cached (`#x CACHED`) and ~30 s when not. Final lines:
+`naming to docker.io/shash1278/studenthub-backend:<BUILD_NUMBER>` and `:latest`. Same for
+frontend. **What to say**: "Two separate Docker images are built — one Python image for the
+FastAPI backend and a multi-stage Node image for the Next.js frontend. Each image is tagged
+twice: with the Jenkins **build number** (immutable history) and with `latest` (what the
+deploy stage pulls)."
+
+### Stage 5 — Docker Push
+`echo **** | docker login -u shash1278 --password-stdin` then four `docker push` lines
+(backend `<n>`, backend `latest`, frontend `<n>`, frontend `latest`). **What to say**:
+"Jenkins authenticates to Docker Hub using a stored credential and pushes both versioned
+and `:latest` tags for both services. After this stage the images are publicly available at
+`hub.docker.com/r/shash1278/studenthub-backend` and `…-frontend`."
+
+### Stage 6 — Deploy (parallel)
+The Stage View splits into two columns: **Backend (Azure ACI)** and **Frontend (Vercel)**.
+
+- **Backend** lines: `az login --service-principal …` → `[…]` (subscription JSON) → silent
+  `az container delete` → `az container create` (no visible output on success).
+- **Frontend** lines: `curl -X POST "****"` → JSON like
+  `{"job":{"id":"…","state":"PENDING"}}`.
+
+**What to say**: "After the images are on Docker Hub, the Deploy stage runs two operations
+in parallel. The backend branch logs in to Azure with a service principal, deletes the
+running container, and creates a new one from `:latest` — forcing ACI to pull the freshly
+pushed image. The frontend branch fires a Vercel deploy hook, which queues a Vercel build of
+the new frontend code. The two run concurrently so the whole stage finishes in about a
+minute."
+
+### Post Actions
+`docker logout` and either:
+- `Pipeline complete - images pushed to Docker Hub and redeployed to Azure + Vercel.` ✅
+- `Pipeline failed - check the stage logs above.` ❌
+
+**What to say**: "The `post` block always runs `docker logout` for hygiene, and prints a
+success or failure message — this is how the pipeline cleans up regardless of outcome."
+
+### Common things they may point at and ask
+| What they show | What to say |
+|---|---|
+| `Warning: A secret was passed to "dependencyCheck" using Groovy String interpolation` | "Cosmetic warning — the value was still masked. The plugin's API accepts the key as a string, not a binding, so Jenkins flags it but the secret never leaked." |
+| `WARN Sonatype OSS Index Analyzer disabled due to missing credentials` | "Optional analyzer that requires a Sonatype Guide account; not needed because NVD and the main analyzers already ran." |
+| `WARN The Pnpm Audit Analyzer has been disabled. Pnpm executable was not found.` | "We use npm, not pnpm, so this analyzer simply isn't applicable. The Node Audit Analyzer above it did run." |
+| Final exit code `0` / `Finished: SUCCESS` | "Whole pipeline passed end-to-end — every stage green." |
+
+---
+
+## 11. Tool Alternatives (What Else You Could Have Used)
+
+A common viva pattern: "Why this tool and not X?" Have a one-liner ready for each.
+
+### Jenkins → alternatives
+| Tool | One-liner |
+|---|---|
+| **GitHub Actions** | YAML pipelines that run on GitHub-hosted runners; no separate server to maintain. |
+| **GitLab CI/CD** | Built into GitLab; uses `.gitlab-ci.yml`; integrated with repo + registry + issues. |
+| **CircleCI** | Hosted CI with a strong Docker-first execution model. |
+| **Travis CI** | Older hosted CI, very simple `.travis.yml`. |
+| **TeamCity** | JetBrains' on-prem CI server; rich UI, paid for commercial use. |
+| **Bamboo** | Atlassian's CI; tight integration with Jira and Bitbucket. |
+| **Drone / Tekton / Argo Workflows** | Kubernetes-native CI engines. |
+
+**Why Jenkins here**: open-source, plugin-rich (OWASP DC, Sonar, Docker all have first-class
+plugins), runs on any OS, and is the most-taught CI/CD tool in academic settings.
+
+### SonarQube → alternatives
+| Tool | One-liner |
+|---|---|
+| **SonarCloud** | Hosted SaaS version of SonarQube — same engine, no self-hosting. |
+| **Semgrep** | Lightweight rule-based static analyzer; great for security patterns. |
+| **CodeQL** (GitHub) | Semantic analysis built into GitHub Advanced Security. |
+| **Snyk Code** | Commercial SAST with AI-assisted fix suggestions. |
+| **Codacy / Code Climate / DeepSource** | Hosted code-quality dashboards. |
+| **ESLint / Pylint / Ruff** | Per-language linters — less comprehensive but free and fast. |
+| **Coverity / Fortify / Checkmarx** | Enterprise SAST tools (heavy, expensive). |
+
+**Why SonarQube here**: free Community edition, supports both Python and TypeScript out of
+the box, runs offline on `localhost:9000`, and produces the visual dashboard the lab asks
+for.
+
+### OWASP Dependency-Check → alternatives
+| Tool | One-liner |
+|---|---|
+| **Snyk Open Source** | Commercial SCA with proprietary vuln DB and auto-fix PRs. |
+| **GitHub Dependabot** | Built-in to GitHub; auto-opens PRs for vulnerable deps. |
+| **Trivy** | Aqua's scanner — does SCA, container images, IaC; very fast. |
+| **Grype** | Anchore's CLI scanner; integrates well with Syft SBOMs. |
+| **npm audit / pip-audit / cargo audit** | Language-native scanners; quick but narrower. |
+| **JFrog Xray / Mend (WhiteSource) / Black Duck** | Enterprise SCA suites. |
+| **OSV-Scanner** (Google) | Uses the open OSV database; supports many ecosystems. |
+
+**Why OWASP DC here**: free, vendor-neutral, uses the public NVD database (the same one most
+commercial scanners use), and has an official Jenkins plugin that publishes HTML/XML
+reports.
+
+### NVD (vulnerability source) → alternatives
+- **OSV.dev** — Google's open vulnerability database, format-friendlier than NVD.
+- **GitHub Advisory Database** — curated by GitHub, surfaced via Dependabot.
+- **Sonatype OSS Index** — what the OSS Index Analyzer would use (needs auth now).
+- **Vendor-specific databases** — RubySec, RustSec, PyPA advisory database, etc.
+
+### Docker (container runtime) → alternatives
+| Tool | One-liner |
+|---|---|
+| **Podman** | Drop-in Docker-compatible CLI; daemonless, rootless by default. |
+| **containerd** | The low-level runtime Docker itself uses under the hood. |
+| **BuildKit / Buildah / Kaniko** | Image builders — Kaniko works inside Kubernetes without a Docker daemon. |
+| **rkt** | CoreOS's old container runtime (now deprecated). |
+| **LXC/LXD** | Linux system containers — closer to lightweight VMs. |
+
+**Why Docker here**: ubiquitous, official Jenkins plugin, Docker Hub registry, and
+`docker compose` for local multi-service runs.
+
+### Docker Hub (image registry) → alternatives
+- **GitHub Container Registry (GHCR)** — ties images to the same GitHub repo.
+- **Azure Container Registry (ACR)** — Azure's private registry; integrates with ACI/AKS.
+- **AWS ECR**, **Google Artifact Registry** — cloud-native registries.
+- **Quay.io** — Red Hat's hosted registry, popular with OpenShift.
+- **Harbor** — self-hosted enterprise registry with image signing and vuln scanning.
+
+### Azure Container Instances (backend host) → alternatives
+| Service | One-liner |
+|---|---|
+| **Azure App Service** | PaaS for web apps; auto-scales, custom domains, SSL out of the box. |
+| **Azure Kubernetes Service (AKS)** | Full Kubernetes for production scale. |
+| **AWS ECS / Fargate** | AWS's container scheduler; Fargate is the serverless flavor. |
+| **Google Cloud Run** | Pay-per-request serverless containers, scales to zero. |
+| **AWS Lambda Container Images** | Run a container as a Lambda function (cold-start tradeoffs). |
+| **Fly.io / Render / Railway** | Developer-friendly PaaS that run Docker images globally. |
+
+**Why ACI here**: cheapest way to run a single Docker container on Azure with a public DNS
+name; no orchestrator to learn for a lab demo.
+
+### Vercel (frontend host) → alternatives
+| Service | One-liner |
+|---|---|
+| **Netlify** | Same model as Vercel; strong on Jamstack + edge functions. |
+| **Cloudflare Pages** | Free, global edge network, integrates with Cloudflare Workers. |
+| **AWS Amplify** | Frontend CI/CD on AWS with auth + storage add-ons. |
+| **GitHub Pages** | Free static hosting; no SSR. |
+| **Azure Static Web Apps** | Azure's equivalent of Vercel/Netlify. |
+| **Self-host on Nginx + a VM/container** | Full control, but you maintain everything. |
+
+**Why Vercel here**: built by the Next.js team, zero-config for our framework, free for
+hobby projects, and the deploy-hook is one HTTP call.
+
+### Azure DevOps (second CI/CD) → alternatives
+Everything in the **Jenkins alternatives** list above plus:
+- **AWS CodePipeline / CodeBuild** — AWS-native CI/CD.
+- **Google Cloud Build** — GCP's CI service, triggers from Cloud Source / GitHub.
+
+**Why Azure DevOps here**: the lab explicitly asked for a self-hosted agent and a separate
+YAML pipeline; Azure DevOps gives free private pipelines and a generous Microsoft-account
+tier for students.
+
+### Git hosting (GitHub) → alternatives
+- **GitLab** — Git + CI/CD + container registry + issues in one product.
+- **Bitbucket** — Atlassian's Git host; integrates with Jira and Bamboo.
+- **Gitea / Forgejo** — self-hosted lightweight Git servers.
+- **Azure Repos** — Microsoft's Git hosting inside Azure DevOps.
+
+**Why GitHub here**: most widely adopted, free public repos, native integration with both
+Jenkins (webhook + plugin) and Azure DevOps (service connection).
+
+### Quick comparison summary you can recite
+
+> "We picked **Jenkins** for full CI/CD flexibility, **SonarQube Community** for free local
+> SAST, **OWASP Dependency-Check** for vendor-neutral SCA against the public NVD,
+> **Docker + Docker Hub** as the industry-standard container toolchain, **Azure Container
+> Instances** as the simplest way to run a single backend container on Azure, **Vercel**
+> for zero-config Next.js hosting, and **Azure DevOps** as the second pipeline because the
+> lab asks for a self-hosted agent. Every one of these has commercial and cloud-native
+> alternatives, but we used the free, open, and academically standard options."
