@@ -121,14 +121,22 @@ pipeline {
                 if ($LASTEXITCODE -ne 0) { throw "az container create failed (exit $LASTEXITCODE)" }
 
                 Write-Host "Waiting for API to start..."
-                Start-Sleep -Seconds 25
-
                 $fqdn = "http://studenthub-api-sh1278.centralindia.azurecontainer.io:8000/api/documents/"
-                try {
-                  $resp = Invoke-WebRequest -Uri $fqdn -UseBasicParsing -TimeoutSec 60
-                  Write-Host "Health check: $($resp.StatusCode) from $fqdn"
-                } catch {
-                  Write-Warning "Health check failed: $_"
+                $healthy = $false
+                for ($i = 1; $i -le 12; $i++) {
+                  Start-Sleep -Seconds 15
+                  try {
+                    $resp = Invoke-WebRequest -Uri $fqdn -UseBasicParsing -TimeoutSec 30
+                    Write-Host "Health check attempt $i`: $($resp.StatusCode) from $fqdn"
+                    $healthy = $true
+                    break
+                  } catch {
+                    Write-Host "Health check attempt $i` failed: $_"
+                  }
+                }
+                if (-not $healthy) {
+                  Write-Warning "Fetching container logs..."
+                  az container logs -g studenthub-rg -n studenthub-backend
                   throw "Backend health check failed after deploy"
                 }
 
