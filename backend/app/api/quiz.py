@@ -11,7 +11,16 @@ router = APIRouter()
 class GenerateQuizRequest(BaseModel):
     document_id: str
 
-@router.post("/generate")
+@router.post(
+    "/generate",
+    responses={
+        404: {"description": "Document not found"},
+        422: {"description": "Document has no readable text or could not be read"},
+        413: {"description": "Document too large for AI processing"},
+        502: {"description": "AI service error"},
+        500: {"description": "Quiz generation or parsing failed"},
+    },
+)
 async def generate_quiz_endpoint(request: GenerateQuizRequest):
     try:
         # 1. Get document path
