@@ -171,9 +171,15 @@ export default function DocumentList() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch("/api/documents")
-      if (!response.ok) throw new Error("Failed to fetch documents")
-      const data = await response.json()
+      const response = await fetch("/api/documents/")
+      const data = await response.json().catch(() => null)
+      if (!response.ok) {
+        const detail =
+          data && typeof data.detail === "string"
+            ? data.detail
+            : `Server error (${response.status})`
+        throw new Error(detail)
+      }
       setDocuments(data || [])
       setError("")
     } catch (err) {

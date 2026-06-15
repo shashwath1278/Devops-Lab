@@ -35,7 +35,9 @@ export async function proxyToBackend(
     responseHeaders.set(key, value)
   })
 
-  return new NextResponse(upstream.body, {
+  const responseBody = await upstream.arrayBuffer()
+
+  return new NextResponse(responseBody, {
     status: upstream.status,
     statusText: upstream.statusText,
     headers: responseHeaders,

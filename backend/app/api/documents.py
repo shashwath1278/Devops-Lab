@@ -1,11 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import List, Optional
-from uuid import UUID
 from app.core.supabase import supabase
 from app.core.security import get_current_user_id
-from app.models.document import Document, DocumentCreate
-import shutil
-import os
+from app.models.document import Document
 
 router = APIRouter()
 
@@ -15,7 +12,10 @@ def _normalize_document_row(row: dict) -> dict:
     out = dict(row)
     if out.get("tags") is None:
         out["tags"] = []
+    if not out.get("uploaded_by"):
+        out["uploaded_by"] = None
     return out
+
 
 @router.post("/upload", response_model=Document)
 async def upload_document(
@@ -23,29 +23,22 @@ async def upload_document(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     subject: Optional[str] = Form(None),
-    tags: Optional[str] = Form(None), # Comma separated tags
+    tags: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id),
 ):
     try:
-        # 1. Upload file to Supabase Storage
         file_content = await file.read()
         file_path = f"{user_id}/{file.filename}"
-        
-        # Check if bucket exists, if not create it (optional, better to assume it exists)
-        # res = supabase.storage.create_bucket("textbooks", options={"public": True})
 
-        res = supabase.storage.from_("textbooks").upload(
+        supabase.storage.from_("textbooks").upload(
             path=file_path,
             file=file_content,
-            file_options={"content-type": file.content_type}
+            file_options={"content-type": file.content_type},
         )
-        
-        # Get Public URL
-        public_url = supabase.storage.from_("textbooks").get_public_url(file_path)
 
-        # 2. Save Metadata to DB
+        public_url = supabase.storage.from_("textbooks").get_public_url(file_path)
         tag_list = [tag.strip() for tag in tags.split(",")] if tags else []
-        
+
         document_data = {
             "title": title,
             "description": description,
@@ -53,56 +46,62 @@ async def upload_document(
             "tags": tag_list,
             "file_url": public_url,
             "file_path": file_path,
-            "uploaded_by": user_id
+            "uploaded_by": user_id,
         }
 
         data, count = supabase.table("documents").insert(document_data).execute()
-        
+
         if not data or len(data[1]) == 0:
-             raise HTTPException(status_code=500, detail="Failed to save metadata")
+            raise HTTPException(status_code=500, detail="Failed to save metadata")
 
-        return data[1][0]
+        return _normalize_document_row(data[1][0])
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @router.get("/", response_model=List[Document])
 async def get_documents(
     subject: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
 ):
-    query = supabase.table("documents").select("*")
-    
-    if subject:
-        query = query.eq("subject", subject)
-    
-    if search:
-        query = query.ilike("title", f"%{search}%")
-        
-    data, count = query.execute()
-    rows = data[1] if data and len(data) > 1 else []
-    return [_normalize_document_row(row) for row in rows]
+    try:
+        query = supabase.table("documents").select("*")
+
+        if subject:
+            query = query.eq("subject", subject)
+
+        if search:
+            query = query.ilike("title", f"%{search}%")
+
+        data, count = query.execute()
+        rows = data[1] if data and len(data) > 1 else []
+        return [_normalize_document_row(row) for row in rows]
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load documents: {e}",
+        ) from e
+
 
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,
     user_id: str = Depends(get_current_user_id),
 ):
-    # 1. Get document to find file path
     data, count = supabase.table("documents").select("*").eq("id", document_id).execute()
     if not data[1]:
         raise HTTPException(status_code=404, detail="Document not found")
-    
+
     document = data[1][0]
-    
+
     owner = document.get("uploaded_by")
     if owner is not None and str(owner) != str(user_id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # 2. Delete from Storage
     supabase.storage.from_("textbooks").remove([document["file_path"]])
-
-    # 3. Delete from DB
     supabase.table("documents").delete().eq("id", document_id).execute()
 
     return {"message": "Document deleted"}
