@@ -81,7 +81,7 @@ pipeline {
       }
     }
 
-    stage('Deploy') {                                   // <-- redeploy backend + frontend
+    stage('Deploy') {
       parallel {
         stage('Backend (Azure ACI)') {
           steps {
@@ -94,20 +94,44 @@ pipeline {
               string(credentialsId: 'groq-api-key',          variable: 'GROQ_API_KEY'),
               string(credentialsId: 'jwt-secret-key',        variable: 'SECRET_KEY')
             ]) {
-              bat '''
-                az login --service-principal -u %AZ_APP_ID% -p %AZ_PASSWORD% --tenant %AZ_TENANT%
+              // PowerShell avoids Windows CMD breaking when secrets contain &, %, ^, etc.
+              powershell '''
+                $ErrorActionPreference = "Stop"
+
+                Write-Host "Azure login..."
+                az login --service-principal -u $env:AZ_APP_ID -p $env:AZ_PASSWORD --tenant $env:AZ_TENANT
+                if ($LASTEXITCODE -ne 0) { throw "az login failed (exit $LASTEXITCODE)" }
+
+                Write-Host "Deleting old container (ignore if missing)..."
                 az container delete -g studenthub-rg -n studenthub-backend --yes
-                az container create -g studenthub-rg -n studenthub-backend ^
-                  --image shash1278/studenthub-backend:latest ^
-                  --os-type Linux --cpu 1 --memory 1.5 ^
-                  --dns-name-label studenthub-api-sh1278 --ports 8000 ^
-                  --secure-environment-variables ^
-                    SUPABASE_URL=%SUPABASE_URL% ^
-                    SUPABASE_SERVICE_ROLE_KEY=%SUPABASE_SERVICE_ROLE_KEY% ^
-                    GROQ_API_KEY=%GROQ_API_KEY% ^
-                    SECRET_KEY=%SECRET_KEY% ^
-                  --environment-variables ^
-                    CORS_ORIGINS=https://devops-lab-delta.vercel.app,http://localhost:3000
+                if ($LASTEXITCODE -ne 0) { Write-Host "Delete returned $LASTEXITCODE (may be OK if already gone)" }
+
+                Write-Host "Creating container with latest backend image..."
+                az container create -g studenthub-rg -n studenthub-backend `
+                  --image shash1278/studenthub-backend:latest `
+                  --os-type Linux --cpu 1 --memory 1.5 `
+                  --dns-name-label studenthub-api-sh1278 --ports 8000 `
+                  --secure-environment-variables `
+                    "SUPABASE_URL=$($env:SUPABASE_URL)" `
+                    "SUPABASE_SERVICE_ROLE_KEY=$($env:SUPABASE_SERVICE_ROLE_KEY)" `
+                    "GROQ_API_KEY=$($env:GROQ_API_KEY)" `
+                    "SECRET_KEY=$($env:SECRET_KEY)" `
+                  --environment-variables `
+                    "CORS_ORIGINS=https://devops-lab-delta.vercel.app,http://localhost:3000"
+                if ($LASTEXITCODE -ne 0) { throw "az container create failed (exit $LASTEXITCODE)" }
+
+                Write-Host "Waiting for API to start..."
+                Start-Sleep -Seconds 25
+
+                $fqdn = "http://studenthub-api-sh1278.centralindia.azurecontainer.io:8000/api/documents/"
+                try {
+                  $resp = Invoke-WebRequest -Uri $fqdn -UseBasicParsing -TimeoutSec 60
+                  Write-Host "Health check: $($resp.StatusCode) from $fqdn"
+                } catch {
+                  Write-Warning "Health check failed: $_"
+                  throw "Backend health check failed after deploy"
+                }
+
                 az logout
               '''
             }

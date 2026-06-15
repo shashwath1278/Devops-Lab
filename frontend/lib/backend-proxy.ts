@@ -27,7 +27,7 @@ export async function proxyToBackend(
     body = await request.arrayBuffer()
   }
 
-  const upstream = await fetch(url, { method, headers, body })
+  const upstream = await fetch(url, { method, headers, body, redirect: "follow" })
 
   const responseHeaders = new Headers()
   upstream.headers.forEach((value, key) => {
@@ -36,6 +36,14 @@ export async function proxyToBackend(
   })
 
   const responseBody = await upstream.arrayBuffer()
+
+  if (!upstream.ok && responseBody.byteLength === 0) {
+    const fallback = `Backend error ${upstream.status} for ${path}`
+    return new NextResponse(fallback, {
+      status: upstream.status,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    })
+  }
 
   return new NextResponse(responseBody, {
     status: upstream.status,

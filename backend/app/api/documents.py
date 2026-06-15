@@ -78,7 +78,13 @@ async def get_documents(
 
         data, count = query.execute()
         rows = data[1] if data and len(data) > 1 else []
-        return [_normalize_document_row(row) for row in rows]
+        documents = []
+        for row in rows:
+            try:
+                documents.append(Document(**_normalize_document_row(row)))
+            except Exception as row_err:
+                print(f"Skipping document row {row.get('id')}: {row_err}")
+        return documents
     except Exception as e:
         raise HTTPException(
             status_code=500,
