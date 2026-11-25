@@ -2,7 +2,7 @@
 
 **Application:** Student Hub  
 **Build under test:** local processes on 25 November 2026  
-**Tester:** shashwath1278
+**Team:** Shashwath Prabhu (1MS23IS113), Roshan Sharma (1MS23IS104), Saravanan S (1MS23IS112)
 
 ## Objective
 

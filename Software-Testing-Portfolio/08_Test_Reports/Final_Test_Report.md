@@ -2,7 +2,7 @@
 
 **Application:** Student Hub  
 **Period:** 25 November 2026  
-**Tester:** shashwath1278  
+**Team:** Shashwath Prabhu (1MS23IS113), Roshan Sharma (1MS23IS104), Saravanan S (1MS23IS112)  
 **Processes:** Next.js `127.0.0.1:3000`, FastAPI `127.0.0.1:8000`
 
 ## 1. Result

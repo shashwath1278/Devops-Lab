@@ -3,11 +3,16 @@
 **Subject:** Software Testing  
 **Activity:** Online Portfolio on GitHub  
 **Marks:** 20  
-**Tester:** [shashwath1278](https://github.com/shashwath1278)  
 **Repository:** [Devops-Lab](https://github.com/shashwath1278/Devops-Lab)  
 **Date of execution:** 25 November 2026
 
-This is an individual portfolio. One student designed, executed, and recorded the tests. The folder layout follows the course portfolio: requirements, test plan, black-box techniques, white-box analysis, API testing, automation, defect reports, a final report, evidence, and a reflection.
+This is a group portfolio for three students. The folder layout follows the course portfolio: requirements, test plan, black-box techniques, white-box analysis, API testing, automation, defect reports, a final report, evidence, and a team reflection.
+
+| Student | USN | Role |
+|---|---|---|
+| Shashwath Prabhu | 1MS23IS113 | Test analyst. Requirements, test plan, black-box cases |
+| Roshan Sharma | 1MS23IS104 | Test engineer. White-box analysis, API results, defect reports |
+| Saravanan S | 1MS23IS112 | Automation and QA. UI automation, final report, portfolio documentation |
 
 ## Application under test
 
@@ -61,7 +66,7 @@ Software-Testing-Portfolio/
 ├── 09_Evidence/
 │   ├── screenshots/README.md
 │   └── videos/README.md
-└── reflections/Individual_Learning_Reflection.md
+└── reflections/Team_Learning_Reflection.md
 ```
 
 The runnable scripts stay in `testing/`, which this portfolio cites. `testing/ST-TEST-REPORT.md` is the same execution, grouped by technique.

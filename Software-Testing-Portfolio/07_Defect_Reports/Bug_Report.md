@@ -2,7 +2,7 @@
 
 **Application:** Student Hub  
 **Date:** 25 November 2026  
-**Tester:** shashwath1278  
+**Team:** Shashwath Prabhu (1MS23IS113), Roshan Sharma (1MS23IS104), Saravanan S (1MS23IS112)  
 **Defects recorded:** 6  
 **Source:** the Schemathesis and Vegeta runs, plus the handlers those runs called
 
