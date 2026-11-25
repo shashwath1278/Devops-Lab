@@ -1,0 +1,10 @@
+{
+  "name": "student-hub-ui-tests",
+  "private": true,
+  "scripts": {
+    "test": "gauge run specs"
+  },
+  "dependencies": {
+    "taiko": "^1.5.2"
+  }
+}

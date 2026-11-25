@@ -1,0 +1,72 @@
+{
+  "schemathesis_version": "4.34.2",
+  "command": "st run http://127.0.0.1:8000/openapi.json --phases examples --max-examples 3 --workers 1 --request-timeout 8 --max-time 70 --checks not_a_server_error,status_code_conformance,response_schema_conformance --report json --report-dir testing\\results\\schemathesis --no-color",
+  "seed": 179622677228202344188346505072283113781,
+  "started_at": "2026-11-25T13:55:43.143152+00:00",
+  "running_time": 5.265999999999622,
+  "stop_reason": "completed",
+  "complete": true,
+  "exit_code": 2,
+  "operations": {
+    "total": 9,
+    "selected": 9,
+    "tested": 0,
+    "errored": 0,
+    "skipped": 9,
+    "skip_reasons": [
+      "No examples in schema"
+    ]
+  },
+  "phases": {
+    "examples": {
+      "status": "skip",
+      "skip_reason": null
+    },
+    "coverage": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    },
+    "fuzzing": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    },
+    "stateful": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    }
+  },
+  "test_cases": {
+    "generated": 0,
+    "with_failures": 0,
+    "unique_failures": 0,
+    "without_checks": 0,
+    "errored": 0
+  },
+  "failures": [],
+  "errors": [],
+  "baseline": null,
+  "filtered": 0,
+  "warnings": {
+    "missing_auth": [],
+    "base_url_mismatch": [],
+    "missing_test_data": [],
+    "validation_mismatch": [],
+    "missing_deserializer": [],
+    "unused_openapi_auth": [],
+    "unsupported_regex": [],
+    "method_not_allowed": [],
+    "constants_extraction": [],
+    "unmatched_filter": [],
+    "unresolvable_reference": [],
+    "unsupported_field": [],
+    "low_valid_rate": [],
+    "rate_limited": [],
+    "not_served": [],
+    "dictionary_mismatch": []
+  },
+  "valid_rates": {},
+  "auth": {
+    "reauth_count": 0,
+    "reauth_broke": false
+  }
+}

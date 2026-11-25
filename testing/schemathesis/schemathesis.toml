@@ -1,0 +1,8 @@
+# Short lab run against the local Student Hub API.
+# Schemathesis generates cases from /openapi.json. Raise max-examples for a longer fuzz.
+
+generation.max-examples = 8
+
+# Keep the run inside a class period. Coverage and stateful phases are included
+# but the example cap above limits how long each operation is explored.
+phases = ["examples", "coverage"]

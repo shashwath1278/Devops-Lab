@@ -1,0 +1,119 @@
+{
+  "schemathesis_version": "4.34.2",
+  "command": "st run http://127.0.0.1:8000/openapi.json --phases coverage --max-examples 2 --workers 1 --request-timeout 8 --max-time 80 --checks not_a_server_error,status_code_conformance,response_schema_conformance --report json --report-dir testing\\results\\schemathesis --no-color",
+  "seed": 117845207217683626339176708915470989617,
+  "started_at": "2026-11-25T13:56:10.883824+00:00",
+  "running_time": 29.406999999999243,
+  "stop_reason": "completed",
+  "complete": true,
+  "exit_code": 1,
+  "operations": {
+    "total": 9,
+    "selected": 9,
+    "tested": 9,
+    "errored": 0,
+    "skipped": 0,
+    "skip_reasons": []
+  },
+  "phases": {
+    "examples": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    },
+    "coverage": {
+      "status": "failure",
+      "skip_reason": null
+    },
+    "fuzzing": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    },
+    "stateful": {
+      "status": "skip",
+      "skip_reason": "disabled"
+    }
+  },
+  "test_cases": {
+    "generated": 17,
+    "with_failures": 8,
+    "unique_failures": 9,
+    "without_checks": 0,
+    "errored": 0
+  },
+  "failures": [
+    {
+      "type": "ServerError",
+      "code": "ST101",
+      "title": "Server error",
+      "severity": "critical",
+      "count": 4,
+      "operations": [
+        "GET /api/documents/",
+        "POST /api/chat/",
+        "POST /api/flashcards/generate",
+        "POST /api/quiz/generate"
+      ]
+    },
+    {
+      "type": "UndefinedStatusCode",
+      "code": "ST103",
+      "title": "Undocumented status code",
+      "severity": "medium",
+      "count": 5,
+      "operations": [
+        "DELETE /api/documents/{document_id}",
+        "POST /api/auth/login",
+        "POST /api/auth/register",
+        "POST /api/chat/",
+        "POST /api/documents/upload"
+      ]
+    }
+  ],
+  "errors": [],
+  "baseline": null,
+  "filtered": 0,
+  "warnings": {
+    "missing_auth": [
+      "DELETE /api/documents/{document_id}",
+      "POST /api/auth/login",
+      "POST /api/documents/upload"
+    ],
+    "base_url_mismatch": [],
+    "missing_test_data": [],
+    "validation_mismatch": [],
+    "missing_deserializer": [],
+    "unused_openapi_auth": [],
+    "unsupported_regex": [],
+    "method_not_allowed": [],
+    "constants_extraction": [],
+    "unmatched_filter": [],
+    "unresolvable_reference": [],
+    "unsupported_field": [],
+    "low_valid_rate": [],
+    "rate_limited": [],
+    "not_served": [],
+    "dictionary_mismatch": []
+  },
+  "valid_rates": {
+    "POST /api/auth/register": {
+      "coverage": {
+        "accepted": 0,
+        "unreachable": 0,
+        "conflicts": 0,
+        "rejected": 1
+      }
+    },
+    "GET /": {
+      "coverage": {
+        "accepted": 1,
+        "unreachable": 0,
+        "conflicts": 0,
+        "rejected": 0
+      }
+    }
+  },
+  "auth": {
+    "reauth_count": 0,
+    "reauth_broke": false
+  }
+}
