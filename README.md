@@ -203,7 +203,7 @@ docker build -f frontend/Dockerfile -t shash1278/react-project:latest ./frontend
 
 ## Software testing
 
-`testing/` holds a separate lab suite. It does not run on `npm test`.
+`testing/` holds the runnable suite. It does not run on `npm test`. The course portfolio, with the requirements, test plan, technique write-ups, defects, and final report, is `Software-Testing-Portfolio/`.
 
 The cases are grouped by technique in `testing/ST-TEST-REPORT.md`: equivalence class, boundary value, decision table, state transition, adversarial, error guessing, and load. The tool is only the runner.
 
